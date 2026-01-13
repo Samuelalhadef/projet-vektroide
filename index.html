@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="VEKTROID - Immersive vaporwave experience featuring Floral Shoppe aesthetics with interactive 3D visuals">
+    <meta name="description"
+        content="VEKTROID - Immersive vaporwave experience featuring Floral Shoppe aesthetics with interactive 3D visuals">
     <meta name="theme-color" content="#1a0a2e">
     <title>VEKTROID // フローラルの専門店</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=VT323&family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
@@ -23,9 +27,13 @@
             --vapor-darker: #0d0221;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
-        html { scroll-behavior: smooth; }
+        html {
+            scroll-behavior: smooth;
+        }
 
         body {
             margin: 0;
@@ -33,7 +41,7 @@
             color: white;
             font-family: 'VT323', monospace;
             overflow-x: hidden;
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="8" fill="%23ff71ce" opacity="0.8"/><circle cx="16" cy="16" r="4" fill="%2301cdfe"/></svg>') 16 16, auto;
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" shape-rendering="crispEdges"><path d="M4 2 L4 22 L8 18 L10 26 L14 24 L12 16 L18 16 Z" fill="%23ffffff" stroke="%23000000" stroke-width="2"/><path d="M6 6 L6 18 L9 15 L11 22 L12 21 L10 14 L15 14 Z" fill="%23cfcfcf"/></svg>') 0 0, auto;
         }
 
         /* ============================================
@@ -43,16 +51,16 @@
         /* CRT Scanlines */
         .crt-overlay {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background:
-                repeating-linear-gradient(
-                    0deg,
+                repeating-linear-gradient(0deg,
                     rgba(0, 0, 0, 0.15),
                     rgba(0, 0, 0, 0.15) 1px,
                     transparent 1px,
-                    transparent 2px
-                );
+                    transparent 2px);
             pointer-events: none;
             z-index: 9998;
         }
@@ -60,29 +68,36 @@
         /* VHS Tracking Effect */
         .vhs-overlay {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
             z-index: 9997;
-            background: linear-gradient(
-                180deg,
-                transparent 0%,
-                rgba(255, 113, 206, 0.03) 50%,
-                transparent 100%
-            );
+            background: linear-gradient(180deg,
+                    transparent 0%,
+                    rgba(255, 113, 206, 0.03) 50%,
+                    transparent 100%);
             animation: vhsScroll 8s linear infinite;
         }
 
         @keyframes vhsScroll {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
+            0% {
+                transform: translateY(-100%);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
         }
 
         /* Chromatic Aberration */
         .chromatic-layer {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
             z-index: 9996;
             mix-blend-mode: screen;
@@ -92,8 +107,10 @@
         /* Vignette */
         .vignette {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
             z-index: 9995;
             box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.9);
@@ -104,8 +121,10 @@
            ============================================ */
         .stars-container {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: -1;
             overflow: hidden;
         }
@@ -118,83 +137,71 @@
         }
 
         @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
         }
 
         /* ============================================
            VAPORWAVE NAVBAR
            ============================================ */
-        .vapor-navbar {
+        /* Windows XP Navbar */
+        .xp-navbar {
             position: fixed;
             top: 0;
             width: 100%;
-            height: 50px;
-            background: linear-gradient(90deg,
-                rgba(26, 10, 46, 0.95) 0%,
-                rgba(185, 103, 255, 0.3) 50%,
-                rgba(26, 10, 46, 0.95) 100%
-            );
-            backdrop-filter: blur(10px);
-            border-bottom: 2px solid var(--vapor-pink);
+            height: 34px;
+            background: linear-gradient(180deg, #245DDA 0%, #1F52C6 10%, #1941A5 100%);
+            border-bottom: 2px solid #00368a;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 30px;
+            padding: 0 5px;
             z-index: 1000;
-            box-shadow: 0 0 30px rgba(255, 113, 206, 0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
-        .nav-logo {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.2rem;
-            background: linear-gradient(90deg, var(--vapor-cyan), var(--vapor-pink));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            letter-spacing: 3px;
-        }
-
-        .nav-links {
+        .start-btn {
+            height: 100%;
+            background: linear-gradient(180deg, #3EAE36 0%, #37952F 100%);
+            border-radius: 0 15px 15px 0;
+            padding: 0 15px 0 10px;
             display: flex;
-            gap: 30px;
+            align-items: center;
+            gap: 5px;
+            font-family: Tahoma, sans-serif;
+            font-weight: bold;
+            font-style: italic;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.3);
+            margin-left: -5px;
+            user-select: none;
         }
 
-        .nav-links a {
-            color: var(--vapor-cyan);
+        .xp-nav-links {
+            margin-left: 16px;
+            font-family: Tahoma, sans-serif;
+            font-size: 12px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .xp-nav-links a {
+            color: rgba(255, 255, 255, 0.95);
             text-decoration: none;
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            transition: all 0.3s ease;
-            position: relative;
         }
 
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--vapor-pink);
-            transition: width 0.3s ease;
-        }
-
-        .nav-links a:hover {
-            color: var(--vapor-pink);
-            text-shadow: 0 0 10px var(--vapor-pink);
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        .nav-jp {
-            font-family: 'Noto Sans JP', sans-serif;
-            color: var(--vapor-purple);
-            font-size: 0.8rem;
-            opacity: 0.7;
+        .xp-nav-links a:hover {
+            text-decoration: underline;
         }
 
         /* ============================================
@@ -219,10 +226,23 @@
         }
 
         @keyframes floatAround {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-20px) rotate(5deg); }
-            50% { transform: translateY(0) rotate(0deg); }
-            75% { transform: translateY(20px) rotate(-5deg); }
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+            }
+
+            25% {
+                transform: translateY(-20px) rotate(5deg);
+            }
+
+            50% {
+                transform: translateY(0) rotate(0deg);
+            }
+
+            75% {
+                transform: translateY(20px) rotate(-5deg);
+            }
         }
 
         /* ============================================
@@ -242,20 +262,35 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(
-                180deg,
-                var(--vapor-darker) 0%,
-                #16082c 30%,
-                #2d1b4e 60%,
-                #1a0a2e 100%
-            );
+            background: linear-gradient(180deg,
+                    var(--vapor-darker) 0%,
+                    #16082c 30%,
+                    #2d1b4e 60%,
+                    #1a0a2e 100%);
+        }
+
+        /* Foreground shadow to fade forward wireframes into black */
+        .hero-front-shadow {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 40vh;
+            z-index: 2;
+            pointer-events: none;
+            background: linear-gradient(180deg,
+                    rgba(0, 0, 0, 0) 0%,
+                    rgba(0, 0, 0, 0.35) 45%,
+                    rgba(0, 0, 0, 0.85) 100%);
         }
 
         /* Retro Sun */
         .retro-sun-container {
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 0;
             display: flex;
             justify-content: center;
@@ -268,13 +303,11 @@
             width: 500px;
             height: 500px;
             border-radius: 50%;
-            background: linear-gradient(
-                to top,
-                #ff00ff 0%,
-                #ff6b6b 30%,
-                #feca57 60%,
-                #ff9ff3 100%
-            );
+            background: linear-gradient(to top,
+                    #ff00ff 0%,
+                    #ff6b6b 30%,
+                    #feca57 60%,
+                    #ff9ff3 100%);
             position: relative;
             margin-top: -50px;
             box-shadow:
@@ -285,38 +318,49 @@
 
             /* Horizontal Lines */
             -webkit-mask-image: linear-gradient(to top,
-                transparent 0%, black 0%,
-                transparent 4%, black 4%,
-                transparent 8%, black 8%,
-                transparent 12%, black 12%,
-                transparent 17%, black 17%,
-                transparent 23%, black 23%,
-                transparent 30%, black 30%,
-                transparent 38%, black 38%,
-                transparent 48%, black 48%,
-                black 100%);
+                    transparent 0%, black 0%,
+                    transparent 4%, black 4%,
+                    transparent 8%, black 8%,
+                    transparent 12%, black 12%,
+                    transparent 17%, black 17%,
+                    transparent 23%, black 23%,
+                    transparent 30%, black 30%,
+                    transparent 38%, black 38%,
+                    transparent 48%, black 48%,
+                    black 100%);
             mask-image: linear-gradient(to top,
-                transparent 0%, black 0%,
-                transparent 4%, black 4%,
-                transparent 8%, black 8%,
-                transparent 12%, black 12%,
-                transparent 17%, black 17%,
-                transparent 23%, black 23%,
-                transparent 30%, black 30%,
-                transparent 38%, black 38%,
-                transparent 48%, black 48%,
-                black 100%);
+                    transparent 0%, black 0%,
+                    transparent 4%, black 4%,
+                    transparent 8%, black 8%,
+                    transparent 12%, black 12%,
+                    transparent 17%, black 17%,
+                    transparent 23%, black 23%,
+                    transparent 30%, black 30%,
+                    transparent 38%, black 38%,
+                    transparent 48%, black 48%,
+                    black 100%);
         }
 
         @keyframes sunPulse {
-            0%, 100% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.02); filter: brightness(1.1); }
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+                filter: brightness(1.1);
+            }
         }
 
         #hero-canvas {
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 1;
         }
 
@@ -339,61 +383,38 @@
 
         .glitch-text {
             font-family: 'Orbitron', sans-serif;
-            font-size: 5rem;
+            font-size: 6rem;
             font-weight: 900;
-            color: white;
             position: relative;
             text-transform: uppercase;
             letter-spacing: 10px;
-            animation: glitchMain 3s infinite;
+            background: linear-gradient(to bottom, #00ffff, #ff00cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 4px 4px 0px rgba(255, 0, 204, 0.5);
+            animation: pulse 2s infinite;
         }
 
         .glitch-text::before,
         .glitch-text::after {
-            content: 'VEKTROID';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            content: none;
         }
 
-        .glitch-text::before {
-            color: var(--vapor-cyan);
-            animation: glitchTop 1s infinite;
-            clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
-            -webkit-clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
-        }
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
 
-        .glitch-text::after {
-            color: var(--vapor-pink);
-            animation: glitchBottom 1.5s infinite;
-            clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
-            -webkit-clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
-        }
+            50% {
+                transform: scale(1.02);
+                filter: brightness(1.3);
+            }
 
-        @keyframes glitchMain {
-            0%, 90%, 100% { transform: translate(0); }
-            92% { transform: translate(-2px, 2px); }
-            94% { transform: translate(2px, -2px); }
-            96% { transform: translate(-2px, -2px); }
-            98% { transform: translate(2px, 2px); }
-        }
-
-        @keyframes glitchTop {
-            0%, 90%, 100% { transform: translate(0); opacity: 0.8; }
-            92% { transform: translate(-3px, 0); }
-            94% { transform: translate(3px, 0); }
-            96% { transform: translate(-3px, 0); }
-            98% { transform: translate(3px, 0); }
-        }
-
-        @keyframes glitchBottom {
-            0%, 90%, 100% { transform: translate(0); opacity: 0.8; }
-            91% { transform: translate(3px, 0); }
-            93% { transform: translate(-3px, 0); }
-            95% { transform: translate(3px, 0); }
-            97% { transform: translate(-3px, 0); }
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
         }
 
         .japanese-title {
@@ -410,14 +431,25 @@
         }
 
         @keyframes neonFlicker {
-            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+
+            0%,
+            19%,
+            21%,
+            23%,
+            25%,
+            54%,
+            56%,
+            100% {
                 opacity: 1;
                 text-shadow:
                     0 0 10px var(--vapor-pink),
                     0 0 20px var(--vapor-pink),
                     0 0 40px var(--vapor-pink);
             }
-            20%, 24%, 55% {
+
+            20%,
+            24%,
+            55% {
                 opacity: 0.8;
                 text-shadow: none;
             }
@@ -441,25 +473,45 @@
         }
 
         @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
         }
 
         /* ============================================
            ALBUM SECTION
            ============================================ */
         #album-section {
-            background: linear-gradient(
-                180deg,
-                var(--vapor-dark) 0%,
-                #0f0520 50%,
-                var(--vapor-darker) 100%
-            );
+            background: linear-gradient(180deg,
+                    var(--vapor-dark) 0%,
+                    #0f0520 50%,
+                    var(--vapor-darker) 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
+        }
+
+        /* Top fade to match hero bottom fade */
+        .album-top-shadow {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 35vh;
+            z-index: 15;
+            pointer-events: none;
+            background: linear-gradient(180deg,
+                    rgba(0, 0, 0, 0.95) 0%,
+                    rgba(0, 0, 0, 0.5) 40%,
+                    rgba(0, 0, 0, 0) 100%);
         }
 
         .section-title {
@@ -488,7 +540,9 @@
             cursor: grab;
         }
 
-        #album-canvas:active { cursor: grabbing; }
+        #album-canvas:active {
+            cursor: grabbing;
+        }
 
         /* Decorative Grid Floor */
         .grid-floor {
@@ -500,12 +554,9 @@
             background:
                 linear-gradient(90deg,
                     rgba(255, 113, 206, 0.1) 1px,
-                    transparent 1px
-                ),
-                linear-gradient(
-                    rgba(1, 205, 254, 0.1) 1px,
-                    transparent 1px
-                );
+                    transparent 1px),
+                linear-gradient(rgba(1, 205, 254, 0.1) 1px,
+                    transparent 1px);
             background-size: 50px 50px;
             transform: perspective(500px) rotateX(60deg);
             transform-origin: bottom;
@@ -516,12 +567,10 @@
            PLAYER SECTION
            ============================================ */
         #player-section {
-            background: linear-gradient(
-                180deg,
-                var(--vapor-darker) 0%,
-                #0a0015 50%,
-                #000 100%
-            );
+            background: linear-gradient(180deg,
+                    var(--vapor-darker) 0%,
+                    #0a0015 50%,
+                    #000 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -607,35 +656,80 @@
            RESPONSIVE
            ============================================ */
         @media (max-width: 768px) {
-            .glitch-text { font-size: 2.5rem; letter-spacing: 5px; }
-            .japanese-title { font-size: 1.5rem; letter-spacing: 8px; }
-            .subtitle { font-size: 1rem; letter-spacing: 4px; }
-            .retro-sun { width: 300px; height: 300px; }
-            .vapor-navbar { padding: 0 15px; }
-            .nav-links { gap: 15px; }
-            .nav-links a { font-size: 0.7rem; }
-            .nav-jp { display: none; }
-            .section-title { font-size: 1.8rem; }
-            .ui-overlay { flex-direction: column; gap: 10px; }
-            .floating-element { display: none; }
+            .glitch-text {
+                font-size: 3rem;
+                letter-spacing: 5px;
+            }
+
+            .japanese-title {
+                font-size: 1.5rem;
+                letter-spacing: 8px;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+                letter-spacing: 4px;
+            }
+
+            .retro-sun {
+                width: 300px;
+                height: 300px;
+            }
+
+            .vapor-navbar {
+                padding: 0 15px;
+            }
+
+            .nav-links {
+                gap: 15px;
+            }
+
+            .nav-links a {
+                font-size: 0.7rem;
+            }
+
+            .nav-jp {
+                display: none;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+
+            .ui-overlay {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .floating-element {
+                display: none;
+            }
         }
 
         /* Reduced Motion */
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
+
+            *,
+            *::before,
+            *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
             }
-            html { scroll-behavior: auto; }
+
+            html {
+                scroll-behavior: auto;
+            }
         }
 
         /* Focus states */
-        a:focus, button:focus {
+        a:focus,
+        button:focus {
             outline: 2px solid var(--vapor-cyan);
             outline-offset: 3px;
         }
     </style>
 </head>
+
 <body>
     <!-- Overlay Effects -->
     <div class="crt-overlay"></div>
@@ -645,21 +739,22 @@
     <!-- Animated Stars -->
     <div class="stars-container" id="stars"></div>
 
-    <!-- Floating Decorations -->
-    <div class="floating-element floating-palm" style="top: 20%; left: 5%; animation-delay: 0s;">🌴</div>
-    <div class="floating-element floating-palm" style="top: 60%; right: 5%; animation-delay: 5s;">🌴</div>
-    <div class="floating-element floating-statue" style="top: 40%; left: 8%; animation-delay: 2s;">🗿</div>
-    <div class="floating-element floating-statue" style="top: 70%; right: 10%; animation-delay: 7s;">🏛️</div>
-
     <!-- Navbar -->
-    <nav class="vapor-navbar" role="navigation" aria-label="Main navigation">
-        <div class="nav-logo">V E K T R O I D</div>
-        <div class="nav-links">
-            <a href="#hero">システム</a>
-            <a href="#album-section">アーカイブ</a>
-            <a href="#player-section">ハードウェア</a>
+    <nav class="xp-navbar" role="navigation" aria-label="Main navigation">
+        <div class="start-btn" aria-label="Start">
+            <div class="w-4 h-4 rounded-full bg-white relative overflow-hidden mr-2 border border-blue-800">
+                <div class="absolute top-0 left-0 w-1/2 h-1/2 bg-[#F35325]"></div>
+                <div class="absolute top-0 right-0 w-1/2 h-1/2 bg-[#81BC06]"></div>
+                <div class="absolute bottom-0 left-0 w-1/2 h-1/2 bg-[#05A6F0]"></div>
+                <div class="absolute bottom-0 right-0 w-1/2 h-1/2 bg-[#FFBA08]"></div>
+            </div>
+            <span>start</span>
         </div>
-        <div class="nav-jp">現実からの脱出</div>
+        <div class="xp-nav-links">
+            <a href="#hero">System</a>
+            <a href="#album-section">Artifacts</a>
+            <a href="#player-section">Hardware</a>
+        </div>
     </nav>
 
     <!-- Hero Section -->
@@ -668,6 +763,7 @@
             <div class="retro-sun"></div>
         </div>
         <div id="hero-canvas"></div>
+        <div class="hero-front-shadow" aria-hidden="true"></div>
         <div class="hero-content">
             <div class="glitch-container">
                 <h1 class="glitch-text">VEKTROID</h1>
@@ -681,6 +777,7 @@
     <!-- Album Section -->
     <section id="album-section">
         <div class="grid-floor"></div>
+        <div class="album-top-shadow" aria-hidden="true"></div>
         <h2 class="section-title">ARTIFACT_アーカイブ</h2>
         <p class="section-subtitle">インタラクトして検査する</p>
         <div id="album-canvas"></div>
@@ -709,7 +806,7 @@
         /* ============================================
            GENERATE ANIMATED STARS
            ============================================ */
-        (function() {
+        (function () {
             const starsContainer = document.getElementById('stars');
             const numStars = 150;
 
@@ -729,14 +826,14 @@
         /* ============================================
            SCENE 1: HERO - VAPORWAVE GRID TERRAIN
            ============================================ */
-        (function() {
+        (function () {
             const container = document.getElementById('hero-canvas');
             const scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x1a0a2e, 0.015);
 
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 4, 8);
-            camera.rotation.x = -0.3;
+            camera.position.set(0, 2.6, 7.5);
+            camera.lookAt(0, 0.2, -18);
 
             const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -768,20 +865,21 @@
             geometry.computeVertexNormals();
 
             // Gradient wireframe material
-            const material = new THREE.MeshBasicMaterial({
-                color: 0xff71ce,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.6
-            });
-
             const tiles = [];
+            const tileMats = [];
             for (let i = 0; i < 4; i++) {
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0xff71ce,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0
+                });
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.rotation.x = -Math.PI / 2;
                 mesh.position.set(0, -5, -i * tileDepth);
                 scene.add(mesh);
                 tiles.push(mesh);
+                tileMats.push(material);
             }
 
             // Add vertical grid lines (columns effect)
@@ -800,6 +898,11 @@
 
             let time = 0;
 
+            function smoothstep(edge0, edge1, x) {
+                const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+                return t * t * (3 - 2 * t);
+            }
+
             function animate() {
                 requestAnimationFrame(animate);
                 time += 0.01;
@@ -814,7 +917,16 @@
 
                 // Color cycling
                 const hue = (Math.sin(time * 0.5) + 1) / 2;
-                material.color.setHSL(hue * 0.1 + 0.85, 1, 0.6);
+                tileMats.forEach((mat, idx) => {
+                    mat.color.setHSL(hue * 0.1 + 0.85, 1, 0.6);
+
+                    // Distance-based fade: far tiles spawn fully transparent
+                    const z = tiles[idx].position.z;
+                    const farZ = -tileDepth * 3.0;   // most distant tile start
+                    const nearZ = tileDepth * 0.35;  // closer region becomes opaque
+                    const opacity = smoothstep(farZ, nearZ, z);
+                    mat.opacity = opacity;
+                });
 
                 renderer.render(scene, camera);
             }
@@ -830,7 +942,7 @@
         /* ============================================
            SCENE 2: ALBUM - FLOATING BUST & GLASS
            ============================================ */
-        (function() {
+        (function () {
             const container = document.getElementById('album-canvas');
             const width = container.clientWidth;
             const height = container.clientHeight;
@@ -958,44 +1070,68 @@
 
             // Interaction
             let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
+            let pointerId = null;
+            let previousPointer = { x: 0, y: 0 };
+            let rotVel = { x: 0, y: 0 };
+            const dragSensitivity = 0.008;
+            const damping = 0.92;
 
-            container.addEventListener('mousedown', () => isDragging = true);
-            container.addEventListener('touchstart', (e) => {
+            container.style.touchAction = 'none';
+
+            container.addEventListener('pointerdown', (e) => {
                 isDragging = true;
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                pointerId = e.pointerId;
+                container.setPointerCapture(pointerId);
+                previousPointer = { x: e.clientX, y: e.clientY };
             });
 
-            window.addEventListener('mouseup', () => isDragging = false);
-            window.addEventListener('touchend', () => isDragging = false);
-
-            window.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaX = e.clientX - previousMousePosition.x;
-                    const deltaY = e.clientY - previousMousePosition.y;
-                    pivot.rotation.y += deltaX * 0.01;
-                    pivot.rotation.x += deltaY * 0.01;
-                }
-                previousMousePosition = { x: e.clientX, y: e.clientY };
+            container.addEventListener('pointerup', () => {
+                isDragging = false;
+                pointerId = null;
             });
 
-            window.addEventListener('touchmove', (e) => {
-                if (isDragging) {
-                    const deltaX = e.touches[0].clientX - previousMousePosition.x;
-                    const deltaY = e.touches[0].clientY - previousMousePosition.y;
-                    pivot.rotation.y += deltaX * 0.01;
-                    pivot.rotation.x += deltaY * 0.01;
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                }
+            container.addEventListener('pointercancel', () => {
+                isDragging = false;
+                pointerId = null;
             });
+
+            container.addEventListener('pointermove', (e) => {
+                if (!isDragging || e.pointerId !== pointerId) return;
+                const deltaX = e.clientX - previousPointer.x;
+                const deltaY = e.clientY - previousPointer.y;
+                const vx = deltaY * dragSensitivity;
+                const vy = deltaX * dragSensitivity;
+
+                pivot.rotation.x += vx;
+                pivot.rotation.y += vy;
+
+                rotVel.x = vx;
+                rotVel.y = vy;
+                previousPointer = { x: e.clientX, y: e.clientY };
+            });
+
+            function lerp(a, b, t) {
+                return a + (b - a) * t;
+            }
 
             function animate() {
                 requestAnimationFrame(animate);
                 const t = Date.now() * 0.001;
 
                 if (!isDragging) {
-                    pivot.rotation.y += 0.003;
-                    pivot.rotation.x = Math.sin(t * 0.3) * 0.1;
+                    // Inertia
+                    pivot.rotation.x += rotVel.x;
+                    pivot.rotation.y += rotVel.y;
+                    rotVel.x *= damping;
+                    rotVel.y *= damping;
+
+                    // Subtle idle motion when inertia is low
+                    const inertiaMag = Math.abs(rotVel.x) + Math.abs(rotVel.y);
+                    if (inertiaMag < 0.0008) {
+                        const targetX = Math.sin(t * 0.3) * 0.1;
+                        pivot.rotation.y += 0.003;
+                        pivot.rotation.x = lerp(pivot.rotation.x, targetX, 0.03);
+                    }
                 }
 
                 // Animate particles
@@ -1022,10 +1158,10 @@
         /* ============================================
            SCENE 3: VAPORWAVE CASSETTE PLAYER
            ============================================ */
-        (function() {
+        (function () {
             const container = document.getElementById('player-canvas');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
+            let width = container.clientWidth;
+            let height = container.clientHeight;
 
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0015);
@@ -1222,27 +1358,56 @@
             tapeGroup.add(leftReel);
             tapeGroup.add(rightReel);
 
-            tapeGroup.position.set(6, 0.25, 0.25);
-            scene.add(tapeGroup);
+            // Keep the tape in playerGroup local space so it always matches rotation
+            tapeGroup.position.set(6, 0.25, 0);
+            playerGroup.add(tapeGroup);
 
             // Interaction
             let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
+            let pointerId = null;
+            let previousPointer = { x: 0, y: 0 };
+            let rotVel = { x: 0, y: 0 };
+            const dragSensitivity = 0.01;
+            const damping = 0.9;
             let tapeInserted = false;
             let isPlaying = false;
 
-            container.addEventListener('mousedown', (e) => {
+            container.style.touchAction = 'none';
+
+            container.addEventListener('pointerdown', (e) => {
                 isDragging = true;
-                previousMousePosition = { x: e.offsetX, y: e.offsetY };
+                pointerId = e.pointerId;
+                container.setPointerCapture(pointerId);
+                previousPointer = { x: e.clientX, y: e.clientY };
             });
-            document.addEventListener('mouseup', () => isDragging = false);
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaMove = { x: e.offsetX - previousMousePosition.x, y: e.offsetY - previousMousePosition.y };
-                    playerGroup.rotation.y += deltaMove.x * 0.01;
-                    playerGroup.rotation.x += deltaMove.y * 0.01;
-                }
-                previousMousePosition = { x: e.offsetX, y: e.offsetY };
+
+            container.addEventListener('pointerup', () => {
+                isDragging = false;
+                pointerId = null;
+            });
+
+            container.addEventListener('pointercancel', () => {
+                isDragging = false;
+                pointerId = null;
+            });
+
+            container.addEventListener('pointermove', (e) => {
+                if (!isDragging || e.pointerId !== pointerId) return;
+                const deltaX = e.clientX - previousPointer.x;
+                const deltaY = e.clientY - previousPointer.y;
+
+                const vy = deltaX * dragSensitivity;
+                const vx = deltaY * dragSensitivity;
+
+                playerGroup.rotation.y += vy;
+                playerGroup.rotation.x += vx;
+
+                // Clamp X rotation a bit so it doesn't flip
+                playerGroup.rotation.x = Math.max(-0.9, Math.min(0.6, playerGroup.rotation.x));
+
+                rotVel.x = vx;
+                rotVel.y = vy;
+                previousPointer = { x: e.clientX, y: e.clientY };
             });
 
             const raycaster = new THREE.Raycaster();
@@ -1250,8 +1415,10 @@
 
             container.addEventListener('click', (event) => {
                 const rect = container.getBoundingClientRect();
-                mouse.x = ((event.clientX - rect.left) / width) * 2 - 1;
-                mouse.y = -((event.clientY - rect.top) / height) * 2 + 1;
+                const currentWidth = rect.width;
+                const currentHeight = rect.height;
+                mouse.x = ((event.clientX - rect.left) / currentWidth) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / currentHeight) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(playerGroup.children);
                 for (let i = 0; i < intersects.length; i++) {
@@ -1291,19 +1458,14 @@
             document.getElementById('insert-tape-btn').addEventListener('click', () => {
                 if (tapeInserted) return;
 
-                let pos = 6;
+                let pos = tapeGroup.position.x;
                 const insertAnim = setInterval(() => {
                     pos -= 0.15;
                     tapeGroup.position.x = pos;
-                    tapeGroup.position.y = 0.25;
-                    tapeGroup.position.z = 0;
-                    tapeGroup.rotation.y = playerGroup.rotation.y;
-                    tapeGroup.rotation.x = playerGroup.rotation.x;
 
                     if (pos <= 0) {
                         clearInterval(insertAnim);
                         tapeGroup.position.set(0, 0.25, 0);
-                        playerGroup.add(tapeGroup);
                         tapeInserted = true;
                         document.getElementById('status-display').innerText = 'ロード完了 LOADED';
                         document.getElementById('status-display').style.color = '#01cdfe';
@@ -1314,6 +1476,15 @@
             function animate() {
                 requestAnimationFrame(animate);
                 const t = Date.now() * 0.001;
+
+                if (!isDragging) {
+                    // Inertia
+                    playerGroup.rotation.x += rotVel.x;
+                    playerGroup.rotation.y += rotVel.y;
+                    playerGroup.rotation.x = Math.max(-0.9, Math.min(0.6, playerGroup.rotation.x));
+                    rotVel.x *= damping;
+                    rotVel.y *= damping;
+                }
 
                 renderer.render(scene, camera);
 
@@ -1332,13 +1503,14 @@
             animate();
 
             window.addEventListener('resize', () => {
-                const newWidth = container.clientWidth;
-                const newHeight = container.clientHeight;
-                camera.aspect = newWidth / newHeight;
+                width = container.clientWidth;
+                height = container.clientHeight;
+                camera.aspect = width / height;
                 camera.updateProjectionMatrix();
-                renderer.setSize(newWidth, newHeight);
+                renderer.setSize(width, height);
             });
         })();
     </script>
 </body>
+
 </html>
