@@ -1996,7 +1996,7 @@
                 function rebuildBackground() {
                     if (!bgCtx) return;
                     bg.width = Math.max(1, cssW);
-                    bg.height = Math.max(1, cssH);
+                    bg.height = Math.max(2, cssH);
 
                     bgCtx.clearRect(0, 0, bg.width, bg.height);
 
@@ -2022,7 +2022,7 @@
                 function resize() {
                     const rect = container ? container.getBoundingClientRect() : visualizerCanvas.getBoundingClientRect();
                     cssW = Math.max(1, Math.floor(rect.width));
-                    cssH = Math.max(1, Math.floor(rect.height));
+                    cssH = Math.max(2, Math.floor(rect.height));
                     dpr = Math.min(window.devicePixelRatio || 1, 2);
 
                     visualizerCanvas.style.width = cssW + 'px';
@@ -2149,26 +2149,6 @@
 
                     ctx.restore();
 
-                    // Subtle spectral haze at the bottom (cheap rectangles)
-                    const audioActive = !!(freqByte && analyser && isPlaying && !audioEl.paused);
-                    const hazeCount = 48;
-                    const hazeW = cssW / hazeCount;
-                    const baseY = cssH * 0.92;
-                    ctx.save();
-                    ctx.globalCompositeOperation = 'screen';
-                    ctx.globalAlpha = 0.45;
-                    for (let i = 0; i < hazeCount; i++) {
-                        const v = audioActive
-                            ? (freqByte[Math.min(freqByte.length - 1, i * 2)] / 255)
-                            : (0.35 + 0.25 * Math.sin(tSeconds * 0.8 + i * 0.25));
-                        const h = (0.18 + Math.pow(v, 0.9) * 0.9) * (cssH * 0.35);
-                        const x = i * hazeW;
-                        ctx.fillStyle = i % 3 === 0
-                            ? 'rgba(255, 113, 206, 0.25)'
-                            : (i % 3 === 1 ? 'rgba(185, 103, 255, 0.22)' : 'rgba(1, 205, 254, 0.22)');
-                        ctx.fillRect(x + 1, baseY - h, Math.max(1, hazeW - 2), h);
-                    }
-                    ctx.restore();
                 }
 
                 function tick(nowMs) {
