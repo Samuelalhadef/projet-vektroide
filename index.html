@@ -548,21 +548,6 @@
             }
         }
 
-        /* ============================================
-           ALBUM SECTION
-           ============================================ */
-        #album-section {
-            background: linear-gradient(180deg,
-                    var(--vapor-dark) 0%,
-                    #0f0520 50%,
-                    var(--vapor-darker) 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
         /* Top fade to match hero bottom fade */
         .album-top-shadow {
             position: absolute;
@@ -597,34 +582,628 @@
             margin-bottom: 20px;
         }
 
-        #album-canvas {
+        /* ============================================
+           RETRO PAINT INTERFACE
+           ============================================ */
+        .paint-window {
+            background: #c0c0c0;
+            border: 3px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            box-shadow:
+                inset 1px 1px 0 #dfdfdf,
+                inset -1px -1px 0 #0a0a0a,
+                4px 4px 10px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+
+        .paint-titlebar {
+            background: linear-gradient(90deg, #000080, #1084d0);
+            color: white;
+            padding: 4px 8px;
+            font-family: 'VT323', monospace;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .paint-titlebar-buttons {
+            display: flex;
+            gap: 3px;
+        }
+
+        .paint-titlebar-btn {
+            width: 18px;
+            height: 18px;
+            background: #c0c0c0;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            font-size: 12px;
+            line-height: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-family: 'VT323', monospace;
+        }
+
+        .paint-titlebar-btn:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+        }
+
+        .paint-menubar {
+            background: #c0c0c0;
+            padding: 2px 4px;
+            font-family: 'VT323', monospace;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #808080;
+        }
+
+        .paint-menubar span {
+            padding: 2px 8px;
+            cursor: pointer;
+            color: #000;
+        }
+
+        .paint-menubar span:hover {
+            background: #000080;
+            color: white;
+        }
+
+        .paint-toolbar {
+            background: #c0c0c0;
+            padding: 4px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid #808080;
+            flex-wrap: wrap;
+        }
+
+        .paint-tool-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .paint-tool-section-title {
+            font-family: 'VT323', monospace;
+            font-size: 0.8rem;
+            color: #000;
+            text-align: center;
+        }
+
+        .paint-color-palette {
+            display: grid;
+            grid-template-columns: repeat(14, 16px);
+            gap: 1px;
+            padding: 4px;
+            background: #808080;
+            border: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+        }
+
+        .paint-color {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            border: 1px solid #000;
+        }
+
+        .paint-color:hover {
+            border: 2px solid #fff;
+        }
+
+        .paint-color.selected {
+            border: 2px solid #ff0;
+            box-shadow: 0 0 4px #ff0;
+        }
+
+        .paint-stickers-panel {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: #808080;
+            border: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            flex-wrap: wrap;
+            max-width: 300px;
+        }
+
+        .paint-sticker {
+            width: 40px;
+            height: 40px;
+            background: #c0c0c0;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: transform 0.1s;
+        }
+
+        .paint-sticker:hover {
+            transform: scale(1.1);
+        }
+
+        .paint-sticker:active,
+        .paint-sticker.selected {
+            border-color: #808080 #ffffff #ffffff #808080;
+            background: #a0a0a0;
+        }
+
+        .paint-canvas-container {
+            background: #808080;
+            padding: 4px;
+            margin: 4px;
+            border: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #paint-canvas {
+            display: block;
             width: 100%;
-            height: 80vh;
-            max-width: 900px;
-            cursor: grab;
+            height: 400px;
+            cursor: crosshair;
+            image-rendering: pixelated;
         }
 
-        #album-canvas:active {
-            cursor: grabbing;
+        .paint-statusbar {
+            background: #c0c0c0;
+            padding: 4px 8px;
+            font-family: 'VT323', monospace;
+            font-size: 0.85rem;
+            color: #000;
+            border-top: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            display: flex;
+            justify-content: space-between;
         }
 
-        /* Decorative Grid Floor */
-        .grid-floor {
+        /* Stickers on canvas */
+        .canvas-sticker {
             position: absolute;
-            bottom: 0;
+            font-size: 48px;
+            cursor: move;
+            user-select: none;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3));
+            transition: transform 0.1s;
+        }
+
+        .canvas-sticker:hover {
+            transform: scale(1.1);
+        }
+
+        .canvas-sticker.dragging {
+            opacity: 0.8;
+            transform: scale(1.2);
+        }
+
+        /* ============================================
+           CASSETTE GENERATOR BUTTON & CASSETTE
+           ============================================ */
+        .paint-and-cassette-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .generate-cassette-btn {
+            background: linear-gradient(180deg, #c0c0c0 0%, #a0a0a0 100%);
+            border: 3px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            padding: 15px 20px;
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+            color: #000;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.1s;
+            min-width: 120px;
+        }
+
+        .generate-cassette-btn:hover {
+            background: linear-gradient(180deg, #d0d0d0 0%, #b0b0b0 100%);
+        }
+
+        .generate-cassette-btn:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+            transform: translateY(2px);
+        }
+
+        .generate-cassette-btn .btn-icon {
+            font-size: 2.5rem;
+        }
+
+        .generate-cassette-btn .btn-text {
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        /* Cassette Display Area - positioned on right side of Paint window */
+        .cassette-display {
+            position: absolute;
+            right: -300px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 300px;
+            height: 200px;
+            z-index: 50;
+            overflow: visible;
+        }
+
+        .cassette-wrapper {
+            position: absolute;
+            left: -280px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Cassette Body */
+        .cassette {
+            width: 280px;
+            height: 180px;
+            background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            border-radius: 8px;
+            position: relative;
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .cassette.printing {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .cassette.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Cassette Label (contains Paint design) */
+        .cassette-label {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            height: 80px;
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .cassette-label canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Cassette Window (reels) */
+        .cassette-window {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 180px;
+            height: 50px;
+            background: linear-gradient(180deg, #111 0%, #222 100%);
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 20px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .cassette-reel {
+            width: 35px;
+            height: 35px;
+            background: conic-gradient(from 0deg, #444 0deg, #666 90deg, #444 180deg, #666 270deg, #444 360deg);
+            border-radius: 50%;
+            border: 3px solid #333;
+            position: relative;
+        }
+
+        .cassette-reel::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: #222;
+            border-radius: 50%;
+        }
+
+        .cassette.visible .cassette-reel {
+            animation: reelSpin 2s linear infinite;
+        }
+
+        @keyframes reelSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Cassette Tape visible through window */
+        .cassette-tape {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 2px;
+            background: #8b4513;
+        }
+
+        /* Cassette screws */
+        .cassette-screw {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle at 30% 30%, #888, #444);
+            border-radius: 50%;
+        }
+
+        .cassette-screw:nth-child(1) { top: 8px; left: 8px; }
+        .cassette-screw:nth-child(2) { top: 8px; right: 8px; }
+        .cassette-screw:nth-child(3) { bottom: 8px; left: 8px; }
+        .cassette-screw:nth-child(4) { bottom: 8px; right: 8px; }
+
+        /* Generation Animation */
+        @keyframes cassettePulse {
+            0%, 100% { box-shadow: 0 0 20px var(--vapor-pink); }
+            50% { box-shadow: 0 0 40px var(--vapor-cyan), 0 0 60px var(--vapor-pink); }
+        }
+
+        .cassette.generating {
+            animation: cassettePulse 0.5s ease-in-out 3;
+        }
+
+        /* Sparkle effect during generation */
+        .sparkle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #fff 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: sparkleAnim 0.6s ease-out forwards;
+        }
+
+        @keyframes sparkleAnim {
+            0% {
+                opacity: 1;
+                transform: scale(0) translate(0, 0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(2) translate(var(--tx), var(--ty));
+            }
+        }
+
+        /* ============================================
+           MACHINE BUILDING SCREEN
+           ============================================ */
+        .machine-screen {
+            position: absolute;
+            top: 0;
             left: 0;
             width: 100%;
-            height: 40%;
-            background:
-                linear-gradient(90deg,
-                    rgba(255, 113, 206, 0.1) 1px,
-                    transparent 1px),
-                linear-gradient(rgba(1, 205, 254, 0.1) 1px,
-                    transparent 1px);
-            background-size: 50px 50px;
-            transform: perspective(500px) rotateX(60deg);
-            transform-origin: bottom;
-            opacity: 0.5;
+            height: 100%;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .machine-screen.shake {
+            animation: machineShake 0.1s infinite;
+        }
+
+        @keyframes machineShake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-3px, 2px); }
+            50% { transform: translate(3px, -2px); }
+            75% { transform: translate(-2px, -3px); }
+        }
+
+        .machine-title {
+            font-family: 'VT323', monospace;
+            font-size: 2rem;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+            margin-bottom: 20px;
+            animation: machineTextFlicker 0.3s infinite;
+        }
+
+        @keyframes machineTextFlicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+            75% { opacity: 0.95; }
+        }
+
+        .machine-progress {
+            width: 80%;
+            height: 30px;
+            background: #222;
+            border: 3px solid #444;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .machine-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #0f0, #0a0);
+            width: 0%;
+            transition: width 0.1s;
+            box-shadow: 0 0 20px #0f0;
+        }
+
+        .machine-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'VT323', monospace;
+            color: #fff;
+            font-size: 1rem;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .machine-gears {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .machine-gear {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #666;
+            border-radius: 50%;
+            position: relative;
+            animation: gearSpin 1s linear infinite;
+        }
+
+        .machine-gear::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 15px;
+            height: 15px;
+            background: #444;
+            border-radius: 50%;
+        }
+
+        .machine-gear:nth-child(2) {
+            animation-direction: reverse;
+            animation-duration: 0.8s;
+        }
+
+        .machine-gear:nth-child(3) {
+            animation-duration: 1.2s;
+        }
+
+        @keyframes gearSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Pixel Smoke */
+        .smoke-container {
+            position: absolute;
+            top: -50px;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .smoke-pixel {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #888;
+            animation: smokeRise 2s ease-out forwards;
+            image-rendering: pixelated;
+        }
+
+        @keyframes smokeRise {
+            0% {
+                opacity: 0.8;
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) translateX(var(--drift)) scale(2);
+            }
+        }
+
+        /* Cassette Printer Animation - shake effect */
+        .cassette.printing {
+            animation: cassetteShake 0.1s infinite;
+        }
+
+        @keyframes cassetteShake {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(2px); }
+        }
+
+        /* Output slot on the right side of Paint window */
+        .cassette-output-slot {
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 200px;
+            background: linear-gradient(90deg, #2a2a2a, #1a1a1a);
+            border: 3px solid #444;
+            border-left: 3px solid #666;
+            border-radius: 0 10px 10px 0;
+            box-shadow:
+                inset -8px 0 15px rgba(0,0,0,0.7),
+                2px 0 10px rgba(0,0,0,0.5);
+            z-index: 60;
+        }
+
+        .cassette-output-slot::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 15px;
+            bottom: 15px;
+            width: 6px;
+            background: linear-gradient(180deg, #111 0%, #222 50%, #111 100%);
+            border-radius: 3px;
+        }
+
+        .cassette-output-slot::after {
+            content: '▶';
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #0f0;
+            font-size: 10px;
+            text-shadow: 0 0 5px #0f0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .paint-window.printing .cassette-output-slot::after {
+            opacity: 1;
+            animation: slotBlink 0.5s infinite;
+        }
+
+        @keyframes slotBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
 
         /* ============================================
@@ -813,6 +1392,121 @@
             outline: 2px solid var(--vapor-cyan);
             outline-offset: 3px;
         }
+
+        /* ============================================
+           TV COLOR BARS TRANSITION SECTION
+           ============================================ */
+        #tv-transition-wrapper {
+            position: relative;
+            height: 300vh; /* Extra height for scroll animation */
+        }
+
+        #tv-static-section {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            background: #000;
+            z-index: 10;
+        }
+
+        .tv-color-bars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .tv-color-bar {
+            flex: 1;
+            height: 100%;
+        }
+
+        .tv-color-bar:nth-child(1) { background: #ffffff; }
+        .tv-color-bar:nth-child(2) { background: #ffff00; }
+        .tv-color-bar:nth-child(3) { background: #00ffff; }
+        .tv-color-bar:nth-child(4) { background: #00ff00; }
+        .tv-color-bar:nth-child(5) { background: #ff00ff; }
+        .tv-color-bar:nth-child(6) { background: #ff0000; }
+        .tv-color-bar:nth-child(7) { background: #0000ff; }
+        .tv-color-bar:nth-child(8) { background: #000000; }
+
+        .tv-static-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.15) 0px,
+                    rgba(0, 0, 0, 0.15) 2px,
+                    transparent 2px,
+                    transparent 4px
+                );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .tv-static-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .tv-static-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'VT323', monospace;
+            font-size: 3rem;
+            color: white;
+            text-shadow:
+                3px 3px 0 #000,
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000;
+            z-index: 4;
+            opacity: 0.9;
+        }
+
+        /* Album sliding from right */
+        #album-slide-container {
+            position: absolute;
+            top: 0;
+            left: 100%;
+            width: 100vw;
+            height: 100vh;
+            z-index: 5;
+            will-change: transform;
+        }
+
+        /* ============================================
+           ALBUM SECTION (inside slide container)
+           ============================================ */
+        #album-section {
+            background: linear-gradient(180deg,
+                    var(--vapor-dark) 0%,
+                    #0f0520 50%,
+                    var(--vapor-darker) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 
@@ -863,14 +1557,102 @@
         </div>
     </section>
 
-    <!-- Album Section -->
-    <section id="album-section">
-        <div class="grid-floor"></div>
-        <div class="album-top-shadow" aria-hidden="true"></div>
-        <h2 class="section-title">ARTIFACT_アーカイブ</h2>
-        <p class="section-subtitle">インタラクトして検査する</p>
-        <div id="album-canvas"></div>
-    </section>
+    <!-- TV Transition Wrapper (for sticky scroll effect) -->
+    <div id="tv-transition-wrapper">
+        <!-- TV Color Bars Section -->
+        <section id="tv-static-section">
+            <div class="tv-color-bars">
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+                <div class="tv-color-bar"></div>
+            </div>
+            <div class="tv-static-overlay"></div>
+            <div class="tv-static-vignette"></div>
+            <div class="tv-static-text">NO SIGNAL 信号なし</div>
+
+            <!-- Album slides in from the right -->
+            <div id="album-slide-container">
+                <section id="album-section">
+                    <div class="paint-and-cassette-container">
+                        <!-- Paint Window Interface -->
+                        <div class="paint-window">
+                            <div class="paint-titlebar">
+                                <span>🎨 untitled - Paint ペイント</span>
+                                <div class="paint-titlebar-buttons">
+                                    <div class="paint-titlebar-btn">_</div>
+                                    <div class="paint-titlebar-btn">□</div>
+                                    <div class="paint-titlebar-btn">✕</div>
+                                </div>
+                            </div>
+                            <div class="paint-menubar">
+                                <span><u>F</u>ile ファイル</span>
+                                <span><u>E</u>dit 編集</span>
+                                <span><u>V</u>iew 表示</span>
+                                <span><u>I</u>mage 画像</span>
+                                <span><u>C</u>olors 色</span>
+                                <span><u>H</u>elp ヘルプ</span>
+                            </div>
+                            <div class="paint-toolbar">
+                                <div class="paint-tool-section">
+                                    <div class="paint-tool-section-title">背景色 BG</div>
+                                    <div class="paint-color-palette" id="color-palette">
+                                        <!-- Colors will be added by JS -->
+                                    </div>
+                                </div>
+                                <div class="paint-tool-section">
+                                    <div class="paint-tool-section-title">ステッカー STICKERS</div>
+                                    <div class="paint-stickers-panel" id="stickers-panel">
+                                        <!-- Stickers will be added by JS -->
+                                    </div>
+                                </div>
+                                <!-- Generate Cassette Button in toolbar -->
+                                <button class="generate-cassette-btn" id="generate-cassette-btn">
+                                    <span class="btn-icon">📼</span>
+                                    <span class="btn-text">CREATE<br>カセット生成</span>
+                                </button>
+                            </div>
+                            <div class="paint-canvas-container">
+                                <canvas id="paint-canvas"></canvas>
+                                <div id="stickers-layer"></div>
+                            </div>
+                            <div class="paint-statusbar">
+                                <span id="paint-status">Ready 準備完了</span>
+                                <span id="paint-coords">0, 0</span>
+                            </div>
+
+                            <!-- Cassette output slot on right side of Paint window -->
+                            <div class="cassette-output-slot"></div>
+
+                            <!-- Cassette Display Area - comes out from right side -->
+                            <div class="cassette-display" id="cassette-display">
+                                <div class="cassette-wrapper">
+                                    <div class="cassette" id="generated-cassette">
+                                        <div class="cassette-screw"></div>
+                                        <div class="cassette-screw"></div>
+                                        <div class="cassette-screw"></div>
+                                        <div class="cassette-screw"></div>
+                                        <div class="cassette-label" id="cassette-label">
+                                            <!-- Paint design will be copied here -->
+                                        </div>
+                                        <div class="cassette-window">
+                                            <div class="cassette-reel"></div>
+                                            <div class="cassette-tape"></div>
+                                            <div class="cassette-reel"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </div>
 
     <!-- Player Section -->
     <section id="player-section">
@@ -911,6 +1693,73 @@
                 star.style.animationDuration = (Math.random() * 2 + 2) + 's';
                 starsContainer.appendChild(star);
             }
+        })();
+
+        /* ============================================
+           TV COLOR BARS + HORIZONTAL ALBUM SCROLL
+           ============================================ */
+        (function () {
+            const wrapper = document.getElementById('tv-transition-wrapper');
+            const albumSlideContainer = document.getElementById('album-slide-container');
+
+            function updateAlbumPosition() {
+                if (!wrapper || !albumSlideContainer) return;
+
+                const wrapperRect = wrapper.getBoundingClientRect();
+                const wrapperTop = wrapperRect.top;
+                const wrapperHeight = wrapper.offsetHeight;
+                const viewportHeight = window.innerHeight;
+
+                // Calculate scroll progress within the wrapper
+                // 0 = just entered, 1 = fully scrolled through
+                let progress = 0;
+
+                if (wrapperTop <= 0) {
+                    // How far we've scrolled into the wrapper
+                    const scrolledIntoWrapper = Math.abs(wrapperTop);
+                    // Total scrollable distance (wrapper height minus one viewport)
+                    const totalScrollDistance = wrapperHeight - viewportHeight;
+
+                    if (totalScrollDistance > 0) {
+                        progress = Math.min(1, Math.max(0, scrolledIntoWrapper / totalScrollDistance));
+                    }
+                }
+
+                // Album slides from right (100%) to left (0%)
+                // Start sliding after 30% scroll progress, finish at 100%
+                let slideProgress = 0;
+                if (progress > 0.3) {
+                    slideProgress = (progress - 0.3) / 0.7; // Normalize to 0-1
+                    slideProgress = Math.min(1, slideProgress);
+                }
+
+                // Ease out cubic for smooth deceleration
+                const eased = 1 - Math.pow(1 - slideProgress, 3);
+
+                // Translate from 100% (off-screen right) to -100% (covers the color bars)
+                const translateX = 100 - (eased * 200);
+
+                albumSlideContainer.style.transform = `translateX(${translateX}%)`;
+            }
+
+            // Use requestAnimationFrame for smooth scrolling
+            let ticking = false;
+
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        updateAlbumPosition();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+
+            // Initial position
+            updateAlbumPosition();
+
+            // Handle resize
+            window.addEventListener('resize', updateAlbumPosition);
         })();
 
         /* ============================================
@@ -1341,257 +2190,407 @@
         })();
 
         /* ============================================
-           SCENE 2: ALBUM - FLOATING BUST & GLASS
+           RETRO PAINT INTERFACE
            ============================================ */
         (function () {
-            const container = document.getElementById('album-canvas');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
+            const canvas = document.getElementById('paint-canvas');
+            const ctx = canvas.getContext('2d');
+            const colorPalette = document.getElementById('color-palette');
+            const stickersPanel = document.getElementById('stickers-panel');
+            const stickersLayer = document.getElementById('stickers-layer');
+            const statusEl = document.getElementById('paint-status');
+            const coordsEl = document.getElementById('paint-coords');
 
-            const albumSection = document.getElementById('album-section');
+            // Color palette - vaporwave + classic Paint colors
+            const colors = [
+                '#000000', '#808080', '#800000', '#808000', '#008000', '#008080', '#000080', '#800080',
+                '#ffffff', '#c0c0c0', '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff',
+                '#ff71ce', '#01cdfe', '#b967ff', '#05ffa1', '#fffb96', '#1a0a2e', '#ff6b6b', '#4ecdc4',
+                '#ffe66d', '#95e1d3', '#f38181', '#aa96da'
+            ];
 
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-            camera.position.z = 7;
+            // Stickers list
+            const stickers = [
+                '🌴', '🗿', '🌸', '💎', '🎵', '💜', '🌊', '☀️',
+                '🏛️', '🌺', '💿', '📼', '🎧', '✨', '🦩', '🍇'
+            ];
 
-            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.setSize(width, height);
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            container.appendChild(renderer.domElement);
+            let currentBgColor = '#ff71ce'; // Pink vaporwave default (so turquoise text is visible)
+            let selectedSticker = null;
 
-            // Vaporwave Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambient);
+            // Setup canvas size
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth - 8;
+                canvas.height = 400;
+                drawCanvas();
+            }
 
-            const pinkLight = new THREE.PointLight(0xff71ce, 3, 20);
-            pinkLight.position.set(5, 5, 5);
-            scene.add(pinkLight);
+            // Draw canvas with background and default text
+            function drawCanvas() {
+                // Background
+                ctx.fillStyle = currentBgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const cyanLight = new THREE.PointLight(0x01cdfe, 3, 20);
-            cyanLight.position.set(-5, -3, 5);
-            scene.add(cyanLight);
-
-            const purpleLight = new THREE.PointLight(0xb967ff, 2, 15);
-            purpleLight.position.set(0, 5, -5);
-            scene.add(purpleLight);
-
-            // Vaporwave Art Generator
-            function generateVaporwaveArt() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 512;
-                const ctx = canvas.getContext('2d');
-
-                // Gradient background
-                const gradient = ctx.createLinearGradient(0, 0, 512, 512);
-                gradient.addColorStop(0, '#ff71ce');
-                gradient.addColorStop(0.5, '#b967ff');
-                gradient.addColorStop(1, '#01cdfe');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 512, 512);
-
-                // Grid lines
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 1;
-                for (let i = 0; i < 512; i += 30) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, i);
-                    ctx.lineTo(512, i);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i, 512);
-                    ctx.stroke();
-                }
-
-                // Japanese text
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.font = 'bold 40px "Noto Sans JP", sans-serif';
+                // Default Japanese text - Macintosh Plus Floral Shoppe
+                // Text color: turquoise (#01cdfe) on dark backgrounds, dark on light backgrounds
+                const textColor = isLightColor(currentBgColor) ? '#1a0a2e' : '#01cdfe';
+                ctx.fillStyle = textColor;
+                ctx.font = 'bold 48px "Noto Sans JP", sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('フローラル', 256, 200);
-                ctx.fillText('専門店', 256, 260);
+                ctx.textBaseline = 'middle';
 
-                // English text
-                ctx.font = 'bold 30px Orbitron, sans-serif';
-                ctx.fillText('VEKTROID', 256, 350);
+                // Add text shadow for better readability
+                ctx.shadowColor = isLightColor(currentBgColor) ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
 
-                return new THREE.CanvasTexture(canvas);
+                // マッキントッシュ・プラス = Macintosh Plus
+                // フローラルの専門店 = Floral Shoppe
+                ctx.fillText('マッキントッシュ・プラス', canvas.width / 2, canvas.height / 2 - 30);
+                ctx.fillText('フローラルの専門店', canvas.width / 2, canvas.height / 2 + 40);
+
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
             }
 
-            const pivot = new THREE.Group();
-            scene.add(pivot);
-
-            // Album Art
-            const albumGeo = new THREE.BoxGeometry(2.5, 2.5, 0.15);
-            const albumMat = new THREE.MeshStandardMaterial({
-                map: generateVaporwaveArt(),
-                emissive: 0x333333,
-                roughness: 0.3,
-                metalness: 0.1
-            });
-            const album = new THREE.Mesh(albumGeo, albumMat);
-            pivot.add(album);
-
-            // Glass Cube
-            const glassGeo = new THREE.BoxGeometry(3, 3, 3);
-            const glassMat = new THREE.MeshPhysicalMaterial({
-                roughness: 0.05,
-                metalness: 0,
-                transmission: 0.9,
-                thickness: 0.5,
-                ior: 1.5,
-                clearcoat: 1,
-                clearcoatRoughness: 0.1,
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.3
-            });
-            const glass = new THREE.Mesh(glassGeo, glassMat);
-            pivot.add(glass);
-
-            // Add floating particles
-            const particleGeo = new THREE.BufferGeometry();
-            const particleCount = 100;
-            const positions = new Float32Array(particleCount * 3);
-
-            for (let i = 0; i < particleCount * 3; i += 3) {
-                positions[i] = (Math.random() - 0.5) * 10;
-                positions[i + 1] = (Math.random() - 0.5) * 10;
-                positions[i + 2] = (Math.random() - 0.5) * 10;
+            // Check if color is light (moved before drawCanvas uses it)
+            function isLightColor(color) {
+                const hex = color.replace('#', '');
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                return brightness > 128;
             }
 
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const particleMat = new THREE.PointsMaterial({
-                color: 0xff71ce,
-                size: 0.05,
-                transparent: true,
-                opacity: 0.6
-            });
-            const particles = new THREE.Points(particleGeo, particleMat);
-            scene.add(particles);
+            // Create color palette
+            colors.forEach((color, index) => {
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'paint-color';
+                colorDiv.style.backgroundColor = color;
+                if (color === currentBgColor) colorDiv.classList.add('selected');
 
-            // Interaction
-            let isDragging = false;
-            let pointerId = null;
-            let previousPointer = { x: 0, y: 0 };
-            let rotVel = { x: 0, y: 0 };
-            const dragSensitivity = 0.008;
-            const damping = 0.92;
+                colorDiv.addEventListener('click', () => {
+                    // Remove selected from all
+                    document.querySelectorAll('.paint-color').forEach(c => c.classList.remove('selected'));
+                    colorDiv.classList.add('selected');
+                    currentBgColor = color;
 
-            container.style.touchAction = 'none';
+                    // Redraw canvas with new background and text
+                    drawCanvas();
+                    statusEl.textContent = '背景色変更 Background changed';
+                });
 
-            container.addEventListener('pointerdown', (e) => {
-                isDragging = true;
-                pointerId = e.pointerId;
-                container.setPointerCapture(pointerId);
-                previousPointer = { x: e.clientX, y: e.clientY };
+                colorPalette.appendChild(colorDiv);
             });
 
-            container.addEventListener('pointerup', () => {
-                isDragging = false;
-                pointerId = null;
+            // Create stickers panel
+            stickers.forEach(sticker => {
+                const stickerDiv = document.createElement('div');
+                stickerDiv.className = 'paint-sticker';
+                stickerDiv.textContent = sticker;
+
+                stickerDiv.addEventListener('click', () => {
+                    document.querySelectorAll('.paint-sticker').forEach(s => s.classList.remove('selected'));
+                    stickerDiv.classList.add('selected');
+                    selectedSticker = sticker;
+                    statusEl.textContent = 'クリックして配置 Click to place: ' + sticker;
+                    canvas.style.cursor = 'copy';
+                });
+
+                stickersPanel.appendChild(stickerDiv);
             });
 
-            container.addEventListener('pointercancel', () => {
-                isDragging = false;
-                pointerId = null;
+            // Place sticker on canvas click
+            canvas.addEventListener('click', (e) => {
+                if (!selectedSticker) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const stickerEl = document.createElement('div');
+                stickerEl.className = 'canvas-sticker';
+                stickerEl.textContent = selectedSticker;
+                stickerEl.style.left = x + 'px';
+                stickerEl.style.top = y + 'px';
+
+                // Make sticker draggable
+                let isDragging = false;
+                let offsetX, offsetY;
+
+                stickerEl.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    stickerEl.classList.add('dragging');
+                    offsetX = e.clientX - stickerEl.offsetLeft;
+                    offsetY = e.clientY - stickerEl.offsetTop;
+                    e.stopPropagation();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    stickerEl.style.left = (e.clientX - offsetX) + 'px';
+                    stickerEl.style.top = (e.clientY - offsetY) + 'px';
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    stickerEl.classList.remove('dragging');
+                });
+
+                // Double click to remove
+                stickerEl.addEventListener('dblclick', () => {
+                    stickerEl.remove();
+                    statusEl.textContent = 'ステッカー削除 Sticker removed';
+                });
+
+                stickersLayer.appendChild(stickerEl);
+                statusEl.textContent = 'ステッカー配置完了 Sticker placed!';
             });
 
-            container.addEventListener('pointermove', (e) => {
-                if (!isDragging || e.pointerId !== pointerId) return;
-                const deltaX = e.clientX - previousPointer.x;
-                const deltaY = e.clientY - previousPointer.y;
-                const vx = deltaY * dragSensitivity;
-                const vy = deltaX * dragSensitivity;
-
-                pivot.rotation.x += vx;
-                pivot.rotation.y += vy;
-
-                rotVel.x = vx;
-                rotVel.y = vy;
-                previousPointer = { x: e.clientX, y: e.clientY };
+            // Track mouse position
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round(e.clientX - rect.left);
+                const y = Math.round(e.clientY - rect.top);
+                coordsEl.textContent = x + ', ' + y;
             });
 
-            function lerp(a, b, t) {
-                return a + (b - a) * t;
-            }
+            // Initialize
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
 
-            // Pause album rendering when off-screen / tab hidden (performance)
-            let albumRaf = 0;
-            let albumIsRunning = false;
-            let albumInView = true;
+            // Make stickers layer match canvas position
+            stickersLayer.style.position = 'absolute';
+            stickersLayer.style.top = '0';
+            stickersLayer.style.left = '0';
+            stickersLayer.style.width = '100%';
+            stickersLayer.style.height = '100%';
+            stickersLayer.style.pointerEvents = 'none';
 
-            function albumLoop() {
-                if (!albumIsRunning) return;
-                albumRaf = requestAnimationFrame(albumLoop);
+            // Enable pointer events only on stickers themselves
+            const style = document.createElement('style');
+            style.textContent = '.canvas-sticker { pointer-events: auto; }';
+            document.head.appendChild(style);
 
-                const t = Date.now() * 0.001;
+            // ============================================
+            // CASSETTE GENERATOR - INDUSTRIAL MACHINE
+            // ============================================
+            const generateBtn = document.getElementById('generate-cassette-btn');
+            const cassette = document.getElementById('generated-cassette');
+            const cassetteLabel = document.getElementById('cassette-label');
+            const cassetteDisplay = document.getElementById('cassette-display');
+            const paintCanvasContainer = document.querySelector('.paint-canvas-container');
+            const paintWindow = document.querySelector('.paint-window');
 
-                if (!isDragging) {
-                    // Inertia
-                    pivot.rotation.x += rotVel.x;
-                    pivot.rotation.y += rotVel.y;
-                    rotVel.x *= damping;
-                    rotVel.y *= damping;
+            let smokeInterval = null;
+            let isGenerating = false;
 
-                    // Subtle idle motion when inertia is low
-                    const inertiaMag = Math.abs(rotVel.x) + Math.abs(rotVel.y);
-                    if (inertiaMag < 0.0008) {
-                        const targetX = Math.sin(t * 0.3) * 0.1;
-                        pivot.rotation.y += 0.003;
-                        pivot.rotation.x = lerp(pivot.rotation.x, targetX, 0.03);
+            // Create pixel smoke effect
+            function createSmoke(container) {
+                const smokeContainer = document.createElement('div');
+                smokeContainer.className = 'smoke-container';
+                container.appendChild(smokeContainer);
+
+                smokeInterval = setInterval(() => {
+                    for (let i = 0; i < 3; i++) {
+                        const smoke = document.createElement('div');
+                        smoke.className = 'smoke-pixel';
+                        smoke.style.left = (Math.random() * 100) + '%';
+                        smoke.style.bottom = '0';
+                        smoke.style.setProperty('--drift', (Math.random() * 40 - 20) + 'px');
+                        smoke.style.background = ['#666', '#888', '#aaa', '#555'][Math.floor(Math.random() * 4)];
+                        smoke.style.width = (6 + Math.random() * 6) + 'px';
+                        smoke.style.height = smoke.style.width;
+                        smokeContainer.appendChild(smoke);
+                        setTimeout(() => smoke.remove(), 2000);
                     }
-                }
+                }, 150);
 
-                // Animate particles
-                particles.rotation.y += 0.001;
-                particles.rotation.x += 0.0005;
-
-                // Animate lights
-                pinkLight.position.x = Math.sin(t) * 5;
-                cyanLight.position.y = Math.cos(t * 0.7) * 5;
-
-                renderer.render(scene, camera);
+                return smokeContainer;
             }
 
-            function albumStart() {
-                if (albumIsRunning) return;
-                albumIsRunning = true;
-                albumRaf = requestAnimationFrame(albumLoop);
+            // Create machine screen overlay
+            function showMachineScreen() {
+                const machineScreen = document.createElement('div');
+                machineScreen.className = 'machine-screen shake';
+                machineScreen.innerHTML = `
+                    <div class="machine-title">⚙️ CASSETTE FACTORY カセット工場 ⚙️</div>
+                    <div class="machine-progress">
+                        <div class="machine-progress-bar" id="machine-progress-bar"></div>
+                        <div class="machine-progress-text" id="machine-progress-text">INITIALIZING... 初期化中</div>
+                    </div>
+                    <div class="machine-gears">
+                        <div class="machine-gear"></div>
+                        <div class="machine-gear"></div>
+                        <div class="machine-gear"></div>
+                    </div>
+                `;
+                paintCanvasContainer.appendChild(machineScreen);
+                return machineScreen;
             }
 
-            function albumStop() {
-                albumIsRunning = false;
-                if (albumRaf) cancelAnimationFrame(albumRaf);
-                albumRaf = 0;
+            // Animate progress bar with messages
+            function animateProgress(progressBar, progressText, callback) {
+                const messages = [
+                    { pct: 0, text: 'LOADING DESIGN... デザイン読込中' },
+                    { pct: 20, text: 'MIXING COLORS... 色を混合中' },
+                    { pct: 40, text: 'HEATING PLASTIC... プラスチック加熱' },
+                    { pct: 60, text: 'MOLDING CASSETTE... カセット成形' },
+                    { pct: 80, text: 'APPLYING LABEL... ラベル貼付' },
+                    { pct: 95, text: 'FINISHING... 仕上げ中' },
+                    { pct: 100, text: 'COMPLETE! 完成!' }
+                ];
+
+                let currentStep = 0;
+                const interval = setInterval(() => {
+                    if (currentStep >= messages.length) {
+                        clearInterval(interval);
+                        callback();
+                        return;
+                    }
+                    const msg = messages[currentStep];
+                    progressBar.style.width = msg.pct + '%';
+                    progressText.textContent = msg.text;
+                    currentStep++;
+                }, 400);
             }
 
-            function albumUpdateRunning() {
-                const shouldRun = albumInView && !document.hidden;
-                if (shouldRun) albumStart();
-                else albumStop();
+            // Capture Paint canvas with stickers
+            function capturePaintDesign() {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(canvas, 0, 0);
+
+                const stickerElements = stickersLayer.querySelectorAll('.canvas-sticker');
+                stickerElements.forEach(sticker => {
+                    const x = parseInt(sticker.style.left) || 0;
+                    const y = parseInt(sticker.style.top) || 0;
+                    tempCtx.font = '48px serif';
+                    tempCtx.fillText(sticker.textContent, x - 24, y + 16);
+                });
+
+                return tempCanvas;
             }
 
-            if (albumSection) {
-                const albumObserver = new IntersectionObserver(
-                    (entries) => {
-                        albumInView = entries.some(e => e.isIntersecting);
-                        albumUpdateRunning();
-                    },
-                    { threshold: 0.05 }
-                );
-                albumObserver.observe(albumSection);
-            }
-            document.addEventListener('visibilitychange', albumUpdateRunning);
-            albumUpdateRunning();
+            // Printer animation - cassette comes out with jerky movements
+            function printerAnimation(designCanvas) {
+                const cassetteWrapper = document.querySelector('.cassette-wrapper');
 
-            window.addEventListener('resize', () => {
-                const newWidth = container.clientWidth;
-                const newHeight = container.clientHeight;
-                camera.aspect = newWidth / newHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(newWidth, newHeight);
+                // Prepare the cassette label
+                cassetteLabel.innerHTML = '';
+                const labelCanvas = document.createElement('canvas');
+                labelCanvas.width = 250;
+                labelCanvas.height = 80;
+                const labelCtx = labelCanvas.getContext('2d');
+                labelCtx.drawImage(designCanvas, 0, 0, labelCanvas.width, labelCanvas.height);
+                cassetteLabel.appendChild(labelCanvas);
+
+                // Add printing class to paint window for slot LED
+                paintWindow.classList.add('printing');
+
+                // Start cassette hidden to the left (inside the machine)
+                let currentX = -280;
+                cassetteWrapper.style.left = currentX + 'px';
+                cassette.classList.add('printing');
+                cassette.classList.remove('visible');
+
+                // Jerky printer movement parameters
+                const targetX = 10;
+                const totalDistance = targetX - currentX; // 290px
+                const steps = 15;
+                let step = 0;
+
+                const printerSound = () => {
+                    // Visual feedback - shake the paint window
+                    paintWindow.style.transform = `translateX(${(Math.random() - 0.5) * 3}px)`;
+                    setTimeout(() => {
+                        paintWindow.style.transform = '';
+                    }, 50);
+                };
+
+                const printerInterval = setInterval(() => {
+                    if (step >= steps) {
+                        clearInterval(printerInterval);
+                        // Final position
+                        cassetteWrapper.style.left = targetX + 'px';
+                        cassette.classList.remove('printing');
+                        cassette.classList.add('visible');
+                        paintWindow.classList.remove('printing');
+                        statusEl.textContent = 'カセット完成! Cassette created!';
+                        generateBtn.disabled = false;
+                        generateBtn.style.opacity = '1';
+                        isGenerating = false;
+                        return;
+                    }
+
+                    // Calculate position with easing and jerk
+                    const progress = (step + 1) / steps;
+                    const eased = 1 - Math.pow(1 - progress, 3); // ease out cubic
+                    const jerk = (Math.random() - 0.5) * 6;
+                    currentX = -280 + (eased * totalDistance) + jerk;
+
+                    cassetteWrapper.style.left = currentX + 'px';
+                    printerSound();
+                    step++;
+                }, 150 + Math.random() * 100); // Variable timing for old printer effect
+            }
+
+            generateBtn.addEventListener('click', () => {
+                if (isGenerating) return;
+                isGenerating = true;
+
+                // Update status
+                statusEl.textContent = 'カセット生成中... Generating cassette...';
+
+                // Disable button
+                generateBtn.disabled = true;
+                generateBtn.style.opacity = '0.6';
+
+                // Hide existing cassette and reset position
+                const cassetteWrapper = document.querySelector('.cassette-wrapper');
+                cassette.classList.remove('visible', 'printing');
+                cassetteWrapper.style.left = '-280px';
+
+                // Capture design BEFORE showing machine screen
+                const designCanvas = capturePaintDesign();
+
+                // Show machine screen
+                const machineScreen = showMachineScreen();
+
+                // Add smoke effect
+                const smokeContainer = createSmoke(paintWindow);
+
+                // Get progress elements
+                const progressBar = document.getElementById('machine-progress-bar');
+                const progressText = document.getElementById('machine-progress-text');
+
+                // Animate progress
+                setTimeout(() => {
+                    animateProgress(progressBar, progressText, () => {
+                        // Stop smoke
+                        if (smokeInterval) {
+                            clearInterval(smokeInterval);
+                            smokeInterval = null;
+                        }
+
+                        // Remove machine screen
+                        setTimeout(() => {
+                            machineScreen.classList.remove('shake');
+                            setTimeout(() => {
+                                machineScreen.remove();
+                                smokeContainer.remove();
+
+                                // Start printer animation
+                                printerAnimation(designCanvas);
+                            }, 300);
+                        }, 500);
+                    });
+                }, 300);
             });
         })();
 
