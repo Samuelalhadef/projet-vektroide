@@ -24,6 +24,17 @@
 (function () {
   const wrapper = document.getElementById("tv-transition-wrapper");
   const albumSlideContainer = document.getElementById("album-slide-container");
+  const pcBootLayer = document.getElementById("pc-boot-layer");
+  const pcBoot = document.getElementById("pc-boot");
+
+  function readCssPxVar(el, varName, fallbackPx = 0) {
+    if (!el) return fallbackPx;
+    const raw = getComputedStyle(el).getPropertyValue(varName).trim();
+    if (!raw) return fallbackPx;
+    // Expect px values (e.g. "-60px"). If a number is provided, treat as px.
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : fallbackPx;
+  }
 
   function updateAlbumPosition() {
     if (!wrapper || !albumSlideContainer) return;
@@ -49,6 +60,28 @@
           Math.max(0, scrolledIntoWrapper / totalScrollDistance)
         );
       }
+    }
+
+    // Intro transition (0% -> 30%): PC off -> zoom into screen -> TV static
+    const introEnd = 0.3;
+    const introProgress = Math.min(1, Math.max(0, progress / introEnd));
+
+    if (pcBootLayer && pcBoot) {
+      // Baseline zoom. Fine-tune later by adjusting CSS vars.
+      const z = 1 + introProgress * 2.4;
+
+      // Configurable zoom target (offset the PC as we zoom).
+      // Negative Y focuses LOWER on the PC image (brings lower area toward center).
+      const fullOffsetX = readCssPxVar(pcBootLayer, "--pc-zoom-offset-x", 0);
+      const fullOffsetY = readCssPxVar(pcBootLayer, "--pc-zoom-offset-y", 0);
+      const tx = fullOffsetX * introProgress;
+      const ty = fullOffsetY * introProgress;
+
+      pcBoot.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
+
+      // No fading: just toggle "screen on" and "screen only" at thresholds.
+      pcBootLayer.classList.toggle("is-screen-on", introProgress >= 0.18);
+      pcBootLayer.classList.toggle("is-screen-only", introProgress >= 0.95);
     }
 
     // Album slides from right (100%) to left (0%)
@@ -913,6 +946,42 @@
   let slideAnim = null;
   let resizeObserver = null;
 
+  function clamp01(x) {
+    return Math.min(1, Math.max(0, x));
+  }
+
+  function worldPointFromCanvasPx(px, py, targetZ) {
+    if (!genCamera || !cassetteGenCanvas) return null;
+
+    const rect = cassetteGenCanvas.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
+
+    const ndc = new THREE.Vector2((px / w) * 2 - 1, -(py / h) * 2 + 1);
+    const from = genCamera.position.clone();
+    const to = new THREE.Vector3(ndc.x, ndc.y, 0.5).unproject(genCamera);
+    const dir = to.sub(from).normalize();
+
+    const dz = dir.z;
+    if (Math.abs(dz) < 1e-5) return null;
+    const t = (targetZ - from.z) / dz;
+    return from.add(dir.multiplyScalar(t));
+  }
+
+  function getOutputSlotWorldCenter() {
+    if (!cassetteGenCanvas) return null;
+    const slotEl = paintWindow?.querySelector(".cassette-output-slot");
+    if (!slotEl) return null;
+
+    const slotRect = slotEl.getBoundingClientRect();
+    const canvasRect = cassetteGenCanvas.getBoundingClientRect();
+    const px = slotRect.left + slotRect.width / 2 - canvasRect.left;
+    const py = slotRect.top + slotRect.height / 2 - canvasRect.top;
+
+    // Cassette sits near z~0 in this generator scene.
+    return worldPointFromCanvasPx(px, py, 0);
+  }
+
   function ensureCassette3D() {
     if (!cassetteGenCanvas || genRenderer) return;
 
@@ -974,15 +1043,19 @@
   function buildCassetteGroup() {
     const group = new THREE.Group();
 
-    const bodyMat = new THREE.MeshStandardMaterial({
+    const bodyMat = new THREE.MeshPhysicalMaterial({
       color: 0x171717,
       roughness: 0.45,
       metalness: 0.25,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.18,
     });
-    const faceMat = new THREE.MeshStandardMaterial({
+    const faceMat = new THREE.MeshPhysicalMaterial({
       color: 0x0d0d0d,
       roughness: 0.25,
       metalness: 0.15,
+      clearcoat: 0.35,
+      clearcoatRoughness: 0.12,
     });
     const windowMat = new THREE.MeshPhysicalMaterial({
       color: 0x0b0b0b,
@@ -997,6 +1070,19 @@
     );
     body.position.set(0, 0.02, 0);
     group.add(body);
+
+    // Thin edge plate for a slightly more "bevelled" read
+    const edgePlate = new THREE.Mesh(
+      new THREE.BoxGeometry(3.04, 1.99, 0.08),
+      new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        roughness: 0.35,
+        metalness: 0.55,
+        emissive: 0x000000,
+      })
+    );
+    edgePlate.position.set(0, 0.02, 0.13);
+    group.add(edgePlate);
 
     const front = new THREE.Mesh(
       new THREE.BoxGeometry(2.92, 1.87, 0.02),
@@ -1053,15 +1139,18 @@
     group.userData.leftReel = leftReel;
     group.userData.rightReel = rightReel;
 
-    // Start hidden under Paint (to slide out to the right)
-    group.position.set(-1.35, 0, 0);
-    group.rotation.set(0.06, 0.4, 0.0);
-    group.scale.set(1.05, 1.05, 1.05);
+    // Base pose (actual slide positioning is computed from the output slot)
+    group.position.set(0, 0, 0);
+    group.rotation.set(0.1, 0.62, 0.0);
+    group.scale.set(1.12, 1.12, 1.12);
 
     return group;
   }
 
   function applyLabelFromDesign(designCanvas) {
+    // Make sure the 3D cassette exists before we try to assign its material.
+    ensureCassette3D();
+
     labelCanvas = document.createElement("canvas");
     labelCanvas.width = 512;
     labelCanvas.height = 160;
@@ -1089,8 +1178,11 @@
     }
     labelTexture.needsUpdate = true;
 
-    cassetteLabelMat.map = labelTexture;
-    cassetteLabelMat.needsUpdate = true;
+    // If WebGL isn't available, still expose the label for the player.
+    if (cassetteLabelMat) {
+      cassetteLabelMat.map = labelTexture;
+      cassetteLabelMat.needsUpdate = true;
+    }
 
     // Expose for the player scene
     VEKTROID.generatedCassette.ready = true;
@@ -1116,11 +1208,22 @@
     cassetteGroup.visible = true;
     resizeCassette3D();
 
+    // Try to align the cassette to the Paint output slot (centered).
+    const slotWorld = getOutputSlotWorldCenter();
+    const baseY = slotWorld ? slotWorld.y : 0;
+    const baseX = slotWorld ? slotWorld.x : 0;
+
+    // Start slightly inside the slot, then slide out until fully visible.
+    // (Tune these offsets if you change camera/cassette scale.)
+    const x0 = baseX - 0.55;
+    const x1 = baseX + 1.85;
+    cassetteGroup.userData.baseY = baseY;
+
     slideAnim = {
       t0: performance.now(),
       durationMs: 1200,
-      x0: -1.35,
-      x1: 2.15,
+      x0,
+      x1,
     };
 
     // Light up the output slot LED during printing
@@ -1171,7 +1274,8 @@
       const baseX = slideAnim.x0 + (slideAnim.x1 - slideAnim.x0) * e;
       const microShake = (1 - e) * 0.02 * Math.sin(t * 55);
       cassetteGroup.position.x = baseX;
-      cassetteGroup.position.y = microShake;
+      cassetteGroup.position.y =
+        (cassetteGroup.userData.baseY || 0) + microShake;
       cassetteGroup.rotation.z = microShake * 0.6;
 
       if (p >= 1) {
@@ -1184,7 +1288,8 @@
       }
     } else if (cassetteGroup.visible) {
       // Idle float (very subtle)
-      cassetteGroup.position.y = Math.sin(t * 1.2) * 0.01;
+      cassetteGroup.position.y =
+        (cassetteGroup.userData.baseY || 0) + Math.sin(t * 1.2) * 0.01;
       cassetteGroup.rotation.z = Math.sin(t * 1.1) * 0.01;
     }
 
@@ -1232,6 +1337,8 @@
             smokeContainer.remove();
 
             // Apply label + slide out the 3D cassette
+            // (Initialize WebGL first so the label material exists)
+            ensureCassette3D();
             applyLabelFromDesign(designCanvas);
             startCassetteSlideOut();
           }, 300);

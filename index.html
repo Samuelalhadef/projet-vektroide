@@ -70,78 +70,94 @@
     <div id="tv-transition-wrapper">
         <!-- TV Color Bars Section -->
         <section id="tv-static-section">
-            <div class="tv-color-bars">
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-                <div class="tv-color-bar"></div>
-            </div>
-            <div class="tv-static-overlay"></div>
-            <div class="tv-static-vignette"></div>
-            <div class="tv-static-text">NO SIGNAL 信号なし</div>
+            <!-- Boot/arrival state: PC in darkness. Scroll zooms into the screen. -->
+            <div id="pc-boot-layer">
+                <div id="pc-boot">
 
-            <!-- Album slides in from the right -->
-            <div id="album-slide-container">
-                <section id="album-section">
-                    <div class="paint-and-cassette-container">
-                        <div class="paint-stage">
-                            <canvas id="cassette-gen-canvas" aria-hidden="true"></canvas>
-                            <!-- Paint Window Interface -->
-                            <div class="paint-window">
-                                <div class="paint-titlebar">
-                                    <span>🎨 untitled - Paint ペイント</span>
-                                    <div class="paint-titlebar-buttons">
-                                        <div class="paint-titlebar-btn">_</div>
-                                        <div class="paint-titlebar-btn">□</div>
-                                        <div class="paint-titlebar-btn">✕</div>
-                                    </div>
-                                </div>
-                                <div class="paint-menubar">
-                                    <span><u>F</u>ile ファイル</span>
-                                    <span><u>E</u>dit 編集</span>
-                                    <span><u>V</u>iew 表示</span>
-                                    <span><u>I</u>mage 画像</span>
-                                    <span><u>C</u>olors 色</span>
-                                    <span><u>H</u>elp ヘルプ</span>
-                                </div>
-                                <div class="paint-toolbar">
-                                    <div class="paint-tool-section">
-                                        <div class="paint-tool-section-title">背景色 BG</div>
-                                        <div class="paint-color-palette" id="color-palette">
-                                            <!-- Colors will be added by JS -->
-                                        </div>
-                                    </div>
-                                    <div class="paint-tool-section">
-                                        <div class="paint-tool-section-title">ステッカー STICKERS</div>
-                                        <div class="paint-stickers-panel" id="stickers-panel">
-                                            <!-- Stickers will be added by JS -->
-                                        </div>
-                                    </div>
-                                    <!-- Generate Cassette Button in toolbar -->
-                                    <button class="generate-cassette-btn" id="generate-cassette-btn">
-                                        <span class="btn-icon">📼</span>
-                                        <span class="btn-text">CREATE<br>カセット生成</span>
-                                    </button>
-                                </div>
-                                <div class="paint-canvas-container">
-                                    <canvas id="paint-canvas"></canvas>
-                                    <div id="stickers-layer"></div>
-                                </div>
-                                <div class="paint-statusbar">
-                                    <span id="paint-status">Ready 準備完了</span>
-                                    <span id="paint-coords">0, 0</span>
-                                </div>
-
-                                <!-- Cassette output slot on right side of Paint window -->
-                                <div class="cassette-output-slot"></div>
-                            </div>
+                    <!-- Screen mask (tune position/size in CSS vars later) -->
+                    <div class="pc-screen-mask">
+                        <div class="tv-color-bars">
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
+                            <div class="tv-color-bar"></div>
                         </div>
+                        <div class="tv-static-overlay"></div>
+                        <div class="tv-static-vignette"></div>
+                        <div class="tv-static-text">NO SIGNAL 信号なし</div>
+
+                        <!-- Screen starts "off"; JS toggles it on without fading -->
+                        <div class="pc-screen-off" aria-hidden="true"></div>
+
+                        <!-- Album/Paint desktop lives inside the PC screen -->
+                        <div id="album-slide-container">
+                            <section id="album-section">
+                                <div class="paint-and-cassette-container">
+                                    <div class="paint-stage">
+                                        <canvas id="cassette-gen-canvas" aria-hidden="true"></canvas>
+                                        <!-- Paint Window Interface -->
+                                        <div class="paint-window">
+                                            <div class="paint-titlebar">
+                                                <span>🎨 untitled - Paint ペイント</span>
+                                                <div class="paint-titlebar-buttons">
+                                                    <div class="paint-titlebar-btn">_</div>
+                                                    <div class="paint-titlebar-btn">□</div>
+                                                    <div class="paint-titlebar-btn">✕</div>
+                                                </div>
+                                            </div>
+                                            <div class="paint-menubar">
+                                                <span><u>F</u>ile ファイル</span>
+                                                <span><u>E</u>dit 編集</span>
+                                                <span><u>V</u>iew 表示</span>
+                                                <span><u>I</u>mage 画像</span>
+                                                <span><u>C</u>olors 色</span>
+                                                <span><u>H</u>elp ヘルプ</span>
+                                            </div>
+                                            <div class="paint-toolbar">
+                                                <div class="paint-tool-section">
+                                                    <div class="paint-tool-section-title">背景色 BG</div>
+                                                    <div class="paint-color-palette" id="color-palette">
+                                                        <!-- Colors will be added by JS -->
+                                                    </div>
+                                                </div>
+                                                <div class="paint-tool-section">
+                                                    <div class="paint-tool-section-title">ステッカー STICKERS</div>
+                                                    <div class="paint-stickers-panel" id="stickers-panel">
+                                                        <!-- Stickers will be added by JS -->
+                                                    </div>
+                                                </div>
+                                                <!-- Generate Cassette Button in toolbar -->
+                                                <button class="generate-cassette-btn" id="generate-cassette-btn">
+                                                    <span class="btn-icon">📼</span>
+                                                    <span class="btn-text">CREATE<br>カセット生成</span>
+                                                </button>
+                                            </div>
+                                            <div class="paint-canvas-container">
+                                                <canvas id="paint-canvas"></canvas>
+                                                <div id="stickers-layer"></div>
+                                            </div>
+                                            <div class="paint-statusbar">
+                                                <span id="paint-status">Ready 準備完了</span>
+                                                <span id="paint-coords">0, 0</span>
+                                            </div>
+
+                                            <!-- Cassette output slot on right side of Paint window -->
+                                            <div class="cassette-output-slot"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
                     </div>
-                </section>
+                    <img class="pc-boot-image" src="image_paint/vektroid-pc-transparent.png" alt="Retro PC" />
+
+                    <div class="pc-boot-vignette" aria-hidden="true"></div>
+                </div>
             </div>
         </section>
     </div>

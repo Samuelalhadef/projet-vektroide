@@ -1282,6 +1282,121 @@ button:focus {
   z-index: 10;
 }
 
+/* PC arrival/boot layer (baseline; you can fine-tune via vars) */
+#pc-boot-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(18, 18, 18, 0.85) 0%,
+    rgba(0, 0, 0, 0.95) 55%,
+    #000 100%
+  );
+  opacity: 1;
+  will-change: transform;
+}
+
+#pc-boot {
+  position: relative;
+  width: min(86vw, 980px);
+  height: min(76vh, 680px);
+  display: grid;
+  place-items: center;
+  /* Zoom tuning knobs (JS uses offsets; origin is pure CSS) */
+  --pc-zoom-origin-x: 50%;
+  --pc-zoom-origin-y: 52%;
+  transform-origin: var(--pc-zoom-origin-x) var(--pc-zoom-origin-y);
+  will-change: transform;
+}
+
+.pc-boot-image {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.75));
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Screen mask positioning (tune later) */
+#pc-boot-layer {
+  --pc-screen-x: 50%;
+  --pc-screen-y: 38%;
+  --pc-screen-w: 32%;
+  --pc-screen-h: 48%;
+  --pc-screen-radius: 20px;
+
+  /* Zoom target offsets (read by JS). Negative Y focuses LOWER on the PC. */
+  --pc-zoom-offset-x: 0px;
+  --pc-zoom-offset-y: 440px;
+
+  /* Desktop scaling inside the PC screen (1 = full size). */
+  --pc-desktop-scale: 0.42;
+}
+
+.pc-screen-mask {
+  position: absolute;
+  left: var(--pc-screen-x);
+  top: var(--pc-screen-y);
+  width: var(--pc-screen-w);
+  height: var(--pc-screen-h);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border-radius: var(--pc-screen-radius);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 0 28px rgba(1, 205, 254, 0.16),
+    0 0 28px rgba(255, 113, 206, 0.12);
+  filter: saturate(1.1) contrast(1.05);
+  /* Needs to be interactive now (Paint lives inside). */
+  pointer-events: auto;
+  isolation: isolate;
+  background: #000;
+  z-index: 1;
+}
+
+/* Screen starts "off" (black). JS toggles .is-screen-on (no fading). */
+.pc-screen-off {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(20, 20, 20, 0.95) 0%,
+    rgba(0, 0, 0, 1) 70%
+  );
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
+  z-index: 20;
+}
+
+#pc-boot-layer.is-screen-on .pc-screen-off {
+  display: none;
+}
+
+/* When fully zoomed, hide the PC body and keep only screen outline + bars */
+#pc-boot-layer.is-screen-only {
+  background: #000;
+}
+
+#pc-boot-layer.is-screen-only .pc-screen-mask {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28),
+    0 0 40px rgba(1, 205, 254, 0.22), 0 0 40px rgba(255, 113, 206, 0.16);
+}
+
+.pc-boot-vignette {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.35) 55%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+}
+
 .tv-color-bars {
   position: absolute;
   top: 0;
@@ -1289,6 +1404,7 @@ button:focus {
   width: 100%;
   height: 100%;
   display: flex;
+  pointer-events: none;
 }
 
 .tv-color-bar {
@@ -1361,6 +1477,7 @@ button:focus {
     -1px 1px 0 #000;
   z-index: 4;
   opacity: 0.9;
+  pointer-events: none;
 }
 
 /* Album sliding from right */
@@ -1368,9 +1485,10 @@ button:focus {
   position: absolute;
   top: 0;
   left: 100%;
-  width: 100vw;
-  height: 100vh;
-  z-index: 5;
+  width: 100%;
+  height: 100%;
+  /* Above bars/static overlays, below the screen-off layer */
+  z-index: 6;
   will-change: transform;
 }
 
@@ -1392,3 +1510,30 @@ button:focus {
   width: 100%;
   height: 100%;
 }
+
+/* Scale the whole desktop to fit inside the PC screen */
+.pc-screen-mask #album-section {
+  transform: scale(var(--pc-desktop-scale));
+  transform-origin: 0 0;
+  width: calc(100% / var(--pc-desktop-scale));
+  height: calc(100% / var(--pc-desktop-scale));
+}
+
+/* Inside-screen layout tightening (so everything fits cleanly) */
+.pc-screen-mask .paint-and-cassette-container {
+  justify-content: flex-start;
+  gap: 14px;
+  /* Slight left bias to leave room for the cassette on the right */
+  padding: 12px 24px 12px 16px;
+}
+
+.pc-screen-mask .paint-stage {
+  width: min(560px, 100%);
+}
+
+/* Reduce extra right-side canvas extension so the cassette stays in-frame */
+.pc-screen-mask #cassette-gen-canvas {
+  width: calc(100% + 220px);
+}
+
+/* Ensure overlays stay above the desktop */
