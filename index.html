@@ -10,6 +10,7 @@
     <title>VEKTROID // フローラルの専門店</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -364,6 +365,69 @@
             z-index: 1;
         }
 
+        /* Hero masked layer (hero model + pillars) */
+        #hero-model-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #hero-model-reveal {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* hidden by default */
+            clip-path: inset(100% 0px 0px 0px);
+            filter: drop-shadow(0 0 24px rgba(1, 205, 254, 0.14)) drop-shadow(0 0 28px rgba(255, 113, 206, 0.12));
+        }
+
+        #hero-model-reveal::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -50%;
+            bottom: -50%;
+            opacity: 0;
+            background:
+                repeating-linear-gradient(0deg,
+                    rgba(255, 255, 255, 0.07),
+                    rgba(255, 255, 255, 0.07) 1px,
+                    transparent 1px,
+                    transparent 5px);
+            mix-blend-mode: screen;
+            transform: translateY(0);
+        }
+
+        #hero-model-reveal.is-revealing::after {
+            opacity: 0.5;
+            animation: heroModelScan 900ms linear infinite;
+        }
+
+        @keyframes heroModelScan {
+            0% {
+                transform: translateY(-15%);
+            }
+
+            100% {
+                transform: translateY(15%);
+            }
+        }
+
+        #hero-model-reveal canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
         /* Hero Content */
         .hero-content {
             z-index: 10;
@@ -575,12 +639,15 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
 
         #player-canvas {
             width: 100%;
             height: 70vh;
             cursor: move;
+            position: relative;
+            z-index: 3;
         }
 
         .ui-overlay {
@@ -625,6 +692,25 @@
             min-width: 200px;
             text-align: center;
             box-shadow: 0 0 10px rgba(255, 113, 206, 0.3);
+        }
+
+        /* Audio Visualizer */
+        #audio-visualizer {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            /* Visible by default as a background layer (like the hero sun) */
+            opacity: 0.35;
+            transition: opacity 220ms ease;
+            mix-blend-mode: screen;
+            filter: blur(0.2px) saturate(1.25);
+        }
+
+        #audio-visualizer.is-active {
+            opacity: 0.85;
         }
 
         /* ============================================
@@ -742,7 +828,7 @@
     <!-- Navbar -->
     <nav class="xp-navbar" role="navigation" aria-label="Main navigation">
         <div class="start-btn" aria-label="Start">
-            <div class="w-4 h-4 rounded-full bg-white relative overflow-hidden mr-2 border border-blue-800">
+            <div class="w-4 h-4 bg-white relative overflow-hidden mr-2 border border-blue-800 shadow-sm">
                 <div class="absolute top-0 left-0 w-1/2 h-1/2 bg-[#F35325]"></div>
                 <div class="absolute top-0 right-0 w-1/2 h-1/2 bg-[#81BC06]"></div>
                 <div class="absolute bottom-0 left-0 w-1/2 h-1/2 bg-[#05A6F0]"></div>
@@ -763,6 +849,9 @@
             <div class="retro-sun"></div>
         </div>
         <div id="hero-canvas"></div>
+        <div id="hero-model-layer" aria-hidden="true">
+            <div id="hero-model-reveal"></div>
+        </div>
         <div class="hero-front-shadow" aria-hidden="true"></div>
         <div class="hero-content">
             <div class="glitch-container">
@@ -790,6 +879,7 @@
             <p class="section-subtitle">ドラッグして回転 // ボタンをクリックして操作</p>
         </div>
         <div id="player-canvas"></div>
+        <canvas id="audio-visualizer" aria-hidden="true"></canvas>
         <div class="ui-overlay">
             <button class="retro-btn" id="insert-tape-btn">テープを挿入</button>
             <div id="status-display">NO TAPE テープなし</div>
@@ -828,29 +918,174 @@
            ============================================ */
         (function () {
             const container = document.getElementById('hero-canvas');
+            const heroSection = document.getElementById('hero');
+            const modelRevealEl = document.getElementById('hero-model-reveal');
             const scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x1a0a2e, 0.015);
 
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 2.6, 7.5);
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300);
+            camera.position.set(0, 2, 7.5);
             camera.lookAt(0, 0.2, -18);
+            camera.layers.set(0);
 
             const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.outputEncoding = THREE.sRGBEncoding;
             container.appendChild(renderer.domElement);
 
+            // Separate renderer/camera layers for masked content (hero model + pillars)
+            const modelCamera = new THREE.PerspectiveCamera(camera.fov, 1, camera.near, camera.far);
+            modelCamera.position.copy(camera.position);
+            modelCamera.quaternion.copy(camera.quaternion);
+            modelCamera.layers.set(1);
+
+            // Pillars get the same clip/scanline mask, but should NOT follow the hero model orbit.
+            // Render them with a fixed camera into the same masked container.
+            const pillarsCamera = new THREE.PerspectiveCamera(camera.fov, 1, camera.near, camera.far);
+            pillarsCamera.position.copy(camera.position);
+            pillarsCamera.quaternion.copy(camera.quaternion);
+            pillarsCamera.layers.set(2);
+
+            const pillarsRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            pillarsRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            pillarsRenderer.outputEncoding = THREE.sRGBEncoding;
+
+            const modelRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            modelRenderer.outputEncoding = THREE.sRGBEncoding;
+            if (modelRevealEl) {
+                // Append pillars first so the hero model renders on top.
+                modelRevealEl.appendChild(pillarsRenderer.domElement);
+                modelRevealEl.appendChild(modelRenderer.domElement);
+            }
+
+            function resizeModelRenderer() {
+                if (!modelRevealEl) return;
+                const w = Math.max(1, modelRevealEl.clientWidth);
+                const h = Math.max(1, modelRevealEl.clientHeight);
+                modelCamera.aspect = w / h;
+                modelCamera.updateProjectionMatrix();
+                pillarsCamera.aspect = w / h;
+                pillarsCamera.updateProjectionMatrix();
+                modelRenderer.setSize(w, h);
+                pillarsRenderer.setSize(w, h);
+            }
+            resizeModelRenderer();
+
+            // Lights for the GLB model
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x140021, 0.8);
+            hemiLight.position.set(0, 5, 0);
+            hemiLight.layers.set(1);
+            hemiLight.layers.enable(2);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+            dirLight.position.set(4, 6, 3);
+            dirLight.layers.set(1);
+            dirLight.layers.enable(2);
+            scene.add(dirLight);
+
+            // Marble pillars loaded from GLB (masked like hero model, but rendered with fixed camera)
+            const pillarsRoot = new THREE.Group();
+            pillarsRoot.layers.set(2);
+            scene.add(pillarsRoot);
+
+            const leftPillar = new THREE.Group();
+            const rightPillar = new THREE.Group();
+            leftPillar.layers.set(2);
+            rightPillar.layers.set(2);
+            pillarsRoot.add(leftPillar);
+            pillarsRoot.add(rightPillar);
+
+            // Lower them so they sit in the scene (closer to the wireframe plane at y=-5)
+            const pillarsBaseY = -5.0;
+            const pillarsZ = -12;
+            const pillarsSideOffset = 6.2 * 3; // ~3x more off to the sides
+            leftPillar.position.set(-pillarsSideOffset, pillarsBaseY, pillarsZ);
+            rightPillar.position.set(pillarsSideOffset, pillarsBaseY, pillarsZ);
+
+            // Mirror slight twist so they don't look perfectly identical
+            leftPillar.rotation.y = 0.3;
+            rightPillar.rotation.y = -0.25;
+
+            // Add a little light so marble reads against the background
+            const pillarGlowLeft = new THREE.PointLight(0xff71ce, 1.25, 26);
+            pillarGlowLeft.position.set(-pillarsSideOffset + 1.5, 1.5, -8);
+            pillarGlowLeft.layers.set(2);
+            pillarsRoot.add(pillarGlowLeft);
+            const pillarGlowRight = new THREE.PointLight(0x01cdfe, 1.25, 26);
+            pillarGlowRight.position.set(pillarsSideOffset - 1.5, 1.5, -8);
+            pillarGlowRight.layers.set(2);
+            pillarsRoot.add(pillarGlowRight);
+
+            (function loadMarblePillars() {
+                if (!THREE.GLTFLoader) {
+                    console.warn('GLTFLoader not found. Ensure the GLTFLoader script is loaded.');
+                    return;
+                }
+
+                const loader = new THREE.GLTFLoader();
+                loader.load(
+                    'source/marble_pillar.glb',
+                    (gltf) => {
+                        const pillarTemplate = gltf.scene;
+
+                        // Make sure textures look correct under sRGB output.
+                        pillarTemplate.traverse((obj) => {
+                            obj.layers.set(2);
+                            if (!obj.isMesh) return;
+                            obj.castShadow = false;
+                            obj.receiveShadow = false;
+                            if (obj.material && obj.material.map) {
+                                obj.material.map.encoding = THREE.sRGBEncoding;
+                            }
+                        });
+
+                        // Scale to a consistent visual height so it matches the scene.
+                        const targetHeight = 10.5;
+                        const yStretch = 1.5; // elongate vertically a bit
+                        const bbox = new THREE.Box3().setFromObject(pillarTemplate);
+                        const size = new THREE.Vector3();
+                        bbox.getSize(size);
+                        const currentHeight = Math.max(0.001, size.y);
+                        const s = targetHeight / currentHeight;
+
+                        const leftInstance = pillarTemplate.clone(true);
+                        const rightInstance = pillarTemplate.clone(true);
+
+                        leftInstance.scale.set(s, s * yStretch, s);
+                        rightInstance.scale.set(s, s * yStretch, s);
+
+                        // Keep bases on the same y
+                        const leftBox = new THREE.Box3().setFromObject(leftInstance);
+                        const rightBox = new THREE.Box3().setFromObject(rightInstance);
+                        const leftMin = leftBox.min.y;
+                        const rightMin = rightBox.min.y;
+                        leftInstance.position.y -= leftMin;
+                        rightInstance.position.y -= rightMin;
+
+                        leftPillar.add(leftInstance);
+                        rightPillar.add(rightInstance);
+                    },
+                    undefined,
+                    (err) => {
+                        console.error('Failed to load marble pillar GLB:', err);
+                    }
+                );
+            })();
+
             // Grid Terrain
-            const tileDepth = 50;
-            const tileWidth = 120;
-            const segmentsW = 48;
-            const segmentsD = 20;
+            const tileDepth = 40;
+            const tileWidth = 200;
+            const segmentsW = 18;
+            const segmentsD = 10;
 
             const geometry = new THREE.PlaneGeometry(tileWidth, tileDepth, segmentsW, segmentsD);
             const pos = geometry.attributes.position;
 
             // Use coefficient that ensures seamless tiling (2π/tileDepth for perfect periodicity)
-            const yCoef = (2 * Math.PI) / tileDepth;
+            const yCoef = (3 * Math.PI) / tileDepth;
 
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i);
@@ -858,10 +1093,10 @@
 
                 let z = 0;
                 z += Math.sin(x * 0.08) * 1.5;
-                z += Math.cos(x * 0.2 + y * yCoef) * 1;
+                z += Math.cos(x * 0.2 + y * yCoef) * 2;
 
                 const dist = Math.abs(x) / (tileWidth / 2);
-                z += Math.pow(dist, 2.5) * 8;
+                z += Math.pow(dist, 2.5) * 50;
 
                 pos.setZ(i, z);
             }
@@ -885,19 +1120,86 @@
                 tileMats.push(material);
             }
 
-            // Add vertical grid lines (columns effect)
-            const columnGeometry = new THREE.BoxGeometry(0.1, 15, 0.1);
-            const columnMaterial = new THREE.MeshBasicMaterial({
-                color: 0x01cdfe,
-                transparent: true,
-                opacity: 0.3
-            });
+            // Load the hero GLB model.
+            // Instead of offsetting the rotation axis (which can be fiddly depending on model origin/orientation),
+            // we orbit the camera around the model based on scroll.
+            const heroModelRoot = new THREE.Group();
+            heroModelRoot.layers.set(1);
+            heroModelRoot.visible = false;
+            scene.add(heroModelRoot);
+            let heroModel = null;
+            const heroModelCenter = new THREE.Vector3();
 
-            for (let i = -5; i <= 5; i++) {
-                const column = new THREE.Mesh(columnGeometry, columnMaterial);
-                column.position.set(i * 8, 2, -30);
-                scene.add(column);
-            }
+            const heroOrbitCenter = new THREE.Vector3(0, -0.25, -2.5);
+            let heroOrbitRadius = 7.8;
+            let heroOrbitHeight = 1.9;
+            let currentOrbitAngle = 0;
+
+            (function loadHeroModel() {
+                if (!THREE.GLTFLoader) {
+                    console.warn('GLTFLoader not found. Ensure the GLTFLoader script is loaded.');
+                    return;
+                }
+
+                const loader = new THREE.GLTFLoader();
+                loader.load(
+                    'source/vaporwave.glb',
+                    (gltf) => {
+                        heroModel = gltf.scene;
+
+                        // Reasonable default transforms; adjust if your model is huge/tiny.
+                        heroModel.scale.setScalar(2.5);
+
+                        // Ensure materials look correct under sRGB output.
+                        heroModel.traverse((obj) => {
+                            if (!obj.isMesh) return;
+                            obj.castShadow = false;
+                            obj.receiveShadow = false;
+                            if (obj.material && obj.material.map) {
+                                obj.material.map.encoding = THREE.sRGBEncoding;
+                            }
+                            obj.layers.set(1);
+                        });
+
+                        // Center the pivot on the model (bounding box center), then move the rotation axis back ~100cm.
+                        new THREE.Box3().setFromObject(heroModel).getCenter(heroModelCenter);
+                        heroModel.position.sub(heroModelCenter);
+                        heroModelRoot.position.copy(heroOrbitCenter);
+                        heroModelRoot.add(heroModel);
+                        heroModelRoot.visible = true;
+
+                        // Reveal the model line-by-line (mask only covers the model canvas)
+                        if (modelRevealEl) {
+                            modelRevealEl.classList.add('is-revealing');
+
+                            const durationMs = 1200;
+                            const start = performance.now();
+                            const stepPx = 6; // controls "line-by-line" feel
+
+                            const tick = (now) => {
+                                const t = Math.max(0, Math.min(1, (now - start) / durationMs));
+                                const h = Math.max(1, modelRevealEl.clientHeight);
+                                const revealed = Math.floor((h * t) / stepPx) * stepPx;
+                                const topPx = Math.max(0, Math.round(h - revealed));
+                                modelRevealEl.style.clipPath = `inset(${topPx}px 0px 0px 0px)`;
+
+                                if (t < 1) {
+                                    requestAnimationFrame(tick);
+                                } else {
+                                    modelRevealEl.style.clipPath = 'inset(0px 0px 0px 0px)';
+                                    // fade scanlines out shortly after full reveal
+                                    setTimeout(() => modelRevealEl.classList.remove('is-revealing'), 350);
+                                }
+                            };
+                            requestAnimationFrame(tick);
+                        }
+                    },
+                    undefined,
+                    (err) => {
+                        console.error('Failed to load hero GLB:', err);
+                    }
+                );
+            })();
 
             let time = 0;
 
@@ -906,9 +1208,44 @@
                 return t * t * (3 - 2 * t);
             }
 
-            function animate() {
-                requestAnimationFrame(animate);
+            function clamp01(x) {
+                return Math.max(0, Math.min(1, x));
+            }
+
+            function getPageScrollProgress() {
+                const doc = document.documentElement;
+                const maxScroll = Math.max(1, doc.scrollHeight - window.innerHeight);
+                return clamp01(window.scrollY / maxScroll);
+            }
+
+            // Pause hero rendering when off-screen / tab hidden (performance)
+            let heroRaf = 0;
+            let heroIsRunning = false;
+            let heroInView = true;
+
+            function heroLoop() {
+                if (!heroIsRunning) return;
+                heroRaf = requestAnimationFrame(heroLoop);
+
                 time += 0.01;
+
+                // Orbit ONLY the model camera so the wireframe terrain stays stable.
+                // (Main camera remains fixed, keeping the background orientation consistent.)
+                if (heroModelRoot && heroModelRoot.visible) {
+                    const p = getPageScrollProgress();
+                    // 2 full orbits across the full page.
+                    const targetAngle = 3 * p * Math.PI * 4 + Math.PI / 2;
+                    currentOrbitAngle += (targetAngle - currentOrbitAngle) * 0.12;
+
+                    const x = heroOrbitCenter.x + Math.cos(currentOrbitAngle) * heroOrbitRadius;
+                    const z = heroOrbitCenter.z + Math.sin(currentOrbitAngle) * heroOrbitRadius;
+
+                    modelCamera.position.set(x, heroOrbitCenter.y + heroOrbitHeight, z);
+                    modelCamera.lookAt(heroOrbitCenter.x, heroOrbitCenter.y, heroOrbitCenter.z);
+
+                    // Subtle idle tilt on the model itself for depth.
+                    if (heroModel) heroModel.rotation.x = -0.05 + Math.sin(time * 0.3) * 0.02;
+                }
 
                 const speed = 0.12;
                 tiles.forEach(tile => {
@@ -917,6 +1254,23 @@
                         tile.position.z -= tileDepth * 4;
                     }
                 });
+
+                // Pillars: automatic spin + half-scroll parallax (semi-fixed feel)
+                // Use hero section's top offset so effect is tied to the section while it's on screen.
+                if (pillarsRoot && heroSection) {
+                    // Auto spin
+                    leftPillar.rotation.y += 0.007;
+                    rightPillar.rotation.y -= 0.008;
+
+                    const rectTopPx = heroSection.getBoundingClientRect().top;
+                    const depth = Math.max(0.1, Math.abs(camera.position.z - pillarsZ));
+                    const worldHeightAtDepth = 2 * depth * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+                    const worldPerPx = worldHeightAtDepth / Math.max(1, window.innerHeight);
+
+                    // Compensate ~50% of scroll movement (correct direction)
+                    const parallaxY = (rectTopPx) * 0.5 * worldPerPx;
+                    pillarsRoot.position.y = parallaxY;
+                }
 
                 // Color cycling
                 const hue = (Math.sin(time * 0.5) + 1) / 2;
@@ -931,14 +1285,58 @@
                     mat.opacity = opacity;
                 });
 
+
                 renderer.render(scene, camera);
+                // Render masked pillars with a fixed camera (so they don't orbit with the hero model)
+                pillarsCamera.position.copy(camera.position);
+                pillarsCamera.quaternion.copy(camera.quaternion);
+                pillarsRenderer.render(scene, pillarsCamera);
+                modelRenderer.render(scene, modelCamera);
             }
-            animate();
+
+            function heroStart() {
+                if (heroIsRunning) return;
+                heroIsRunning = true;
+                heroRaf = requestAnimationFrame(heroLoop);
+            }
+
+            function heroStop() {
+                heroIsRunning = false;
+                if (heroRaf) cancelAnimationFrame(heroRaf);
+                heroRaf = 0;
+            }
+
+            function heroUpdateRunning() {
+                const shouldRun = heroInView && !document.hidden;
+                if (shouldRun) heroStart();
+                else heroStop();
+            }
+
+            if (heroSection) {
+                const heroObserver = new IntersectionObserver(
+                    (entries) => {
+                        heroInView = entries.some(e => e.isIntersecting);
+                        heroUpdateRunning();
+                    },
+                    { threshold: 0.05 }
+                );
+                heroObserver.observe(heroSection);
+            }
+            document.addEventListener('visibilitychange', heroUpdateRunning);
+            heroUpdateRunning();
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
+
+                modelCamera.fov = camera.fov;
+                modelCamera.near = camera.near;
+                modelCamera.far = camera.far;
+                pillarsCamera.fov = camera.fov;
+                pillarsCamera.near = camera.near;
+                pillarsCamera.far = camera.far;
+                resizeModelRenderer();
             });
         })();
 
@@ -949,6 +1347,8 @@
             const container = document.getElementById('album-canvas');
             const width = container.clientWidth;
             const height = container.clientHeight;
+
+            const albumSection = document.getElementById('album-section');
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
@@ -1117,8 +1517,15 @@
                 return a + (b - a) * t;
             }
 
-            function animate() {
-                requestAnimationFrame(animate);
+            // Pause album rendering when off-screen / tab hidden (performance)
+            let albumRaf = 0;
+            let albumIsRunning = false;
+            let albumInView = true;
+
+            function albumLoop() {
+                if (!albumIsRunning) return;
+                albumRaf = requestAnimationFrame(albumLoop);
+
                 const t = Date.now() * 0.001;
 
                 if (!isDragging) {
@@ -1147,7 +1554,37 @@
 
                 renderer.render(scene, camera);
             }
-            animate();
+
+            function albumStart() {
+                if (albumIsRunning) return;
+                albumIsRunning = true;
+                albumRaf = requestAnimationFrame(albumLoop);
+            }
+
+            function albumStop() {
+                albumIsRunning = false;
+                if (albumRaf) cancelAnimationFrame(albumRaf);
+                albumRaf = 0;
+            }
+
+            function albumUpdateRunning() {
+                const shouldRun = albumInView && !document.hidden;
+                if (shouldRun) albumStart();
+                else albumStop();
+            }
+
+            if (albumSection) {
+                const albumObserver = new IntersectionObserver(
+                    (entries) => {
+                        albumInView = entries.some(e => e.isIntersecting);
+                        albumUpdateRunning();
+                    },
+                    { threshold: 0.05 }
+                );
+                albumObserver.observe(albumSection);
+            }
+            document.addEventListener('visibilitychange', albumUpdateRunning);
+            albumUpdateRunning();
 
             window.addEventListener('resize', () => {
                 const newWidth = container.clientWidth;
@@ -1163,19 +1600,23 @@
            ============================================ */
         (function () {
             const container = document.getElementById('player-canvas');
+            const visualizerCanvas = document.getElementById('audio-visualizer');
+            const playerSection = document.getElementById('player-section');
             let width = container.clientWidth;
             let height = container.clientHeight;
 
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0015);
+            // Transparent so the canvas visualizer can show through behind the 3D.
+            scene.background = null;
 
             const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
             camera.position.set(8, 5, 8);
             camera.lookAt(0, 0, 0);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setSize(width, height);
+            renderer.setClearColor(0x000000, 0);
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
@@ -1375,6 +1816,483 @@
             let tapeInserted = false;
             let isPlaying = false;
 
+            // ==========================
+            // AUDIO: FloralShoppeCassette
+            // ==========================
+            const statusEl = document.getElementById('status-display');
+            const audioEl = new Audio();
+            audioEl.preload = 'metadata';
+            audioEl.loop = false;
+
+            // Keep this list in sync with the files in FloralShoppeCassette/
+            const tapePlaylist = [
+                { title: 'A1 ブート', audio: 'FloralShoppeCassette/A1 ブート.mp3', cover: 'FloralShoppeCassette/A1 ブート.png' },
+                { title: 'A2 リサフランク420 現代のコンピュー', audio: 'FloralShoppeCassette/A2 リサフランク420 現代のコンピュー.mp3', cover: 'FloralShoppeCassette/A2 リサフランク420 現代のコンピュー.png' },
+                { title: 'A3 花の専門店', audio: 'FloralShoppeCassette/A3 花の専門店.mp3', cover: 'FloralShoppeCassette/A3 花の専門店.png' },
+                { title: 'A4 ライブラリ', audio: 'FloralShoppeCassette/A4 ライブラリ.mp3', cover: 'FloralShoppeCassette/A4 ライブラリ.png' },
+                { title: 'A5 地理', audio: 'FloralShoppeCassette/A5 地理.mp3', cover: 'FloralShoppeCassette/A5 地理.png' },
+                { title: 'B1 Eccoと悪寒ダイビング', audio: 'FloralShoppeCassette/B1 Eccoと悪寒ダイビング.mp3', cover: 'FloralShoppeCassette/B1 Eccoと悪寒ダイビング.png' },
+                { title: 'B2 数学', audio: 'FloralShoppeCassette/B2 数学.mp3', cover: 'FloralShoppeCassette/B2 数学.png' },
+                { title: 'B3 待機', audio: 'FloralShoppeCassette/B3 待機.mp3', cover: 'FloralShoppeCassette/B3 待機.png' },
+                { title: 'B4 ピコ', audio: 'FloralShoppeCassette/B4 ピコ.mp3', cover: 'FloralShoppeCassette/B4 ピコ.png' },
+                { title: 'B5 外ギン Aviation', audio: 'FloralShoppeCassette/B5 外ギン Aviation.mp3', cover: 'FloralShoppeCassette/B5 外ギン Aviation.png' },
+                { title: 'B6 て', audio: 'FloralShoppeCassette/B6 て.mp3', cover: 'FloralShoppeCassette/B6 て.png' },
+            ];
+
+            let currentTrackIndex = 0;
+
+            let audioCtx = null;
+            let analyser = null;
+            let analyserData = null;
+            let audioSource = null;
+            let vizRaf = 0;
+
+            function ensureAudioGraph() {
+                if (audioCtx && analyser && audioSource) return;
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) {
+                    console.warn('Web Audio API not available; visualizer disabled.');
+                    return;
+                }
+                audioCtx = new AudioContextCtor();
+                analyser = audioCtx.createAnalyser();
+                // Lower fftSize + smoothing = less CPU + less "glitch"/jitter.
+                analyser.fftSize = 1024;
+                analyser.smoothingTimeConstant = 0.86;
+                analyserData = new Uint8Array(analyser.frequencyBinCount);
+                audioSource = audioCtx.createMediaElementSource(audioEl);
+                audioSource.connect(analyser);
+                analyser.connect(audioCtx.destination);
+            }
+
+            function setStatus(text, color) {
+                if (!statusEl) return;
+                statusEl.innerText = text;
+                if (color) statusEl.style.color = color;
+            }
+
+            function setTapeLabel(track) {
+                // Draw cover + title onto the existing label canvas
+                const ctx = labelCtx;
+                if (!ctx) return;
+
+                ctx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+
+                // gradient base
+                const g = ctx.createLinearGradient(0, 0, labelCanvas.width, 0);
+                g.addColorStop(0, '#ff71ce');
+                g.addColorStop(0.5, '#b967ff');
+                g.addColorStop(1, '#01cdfe');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
+
+                // title
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(track?.title ? track.title : 'FLORAL SHOPPE', 128, 40);
+
+                labelTexture.needsUpdate = true;
+
+                // Load cover into a THREE texture and swap on the tape body/label if desired
+                // (Keeping it minimal here: label text updates instantly even if cover fails.)
+            }
+
+            function loadTrack(index) {
+                currentTrackIndex = (index + tapePlaylist.length) % tapePlaylist.length;
+                const track = tapePlaylist[currentTrackIndex];
+
+                // encodeURI keeps japanese + spaces safe for URL paths
+                audioEl.src = encodeURI(track.audio);
+                setTapeLabel(track);
+                setStatus(`READY 準備完了\n${track.title}`, '#01cdfe');
+            }
+
+            async function playCurrent() {
+                if (!tapeInserted) {
+                    setStatus('NO TAPE テープなし', '#ff71ce');
+                    return;
+                }
+
+                ensureAudioGraph();
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    try { await audioCtx.resume(); } catch (_) { }
+                }
+
+                try {
+                    await audioEl.play();
+                    isPlaying = true;
+                    setStatus(`再生中 PLAYING >>\n${tapePlaylist[currentTrackIndex].title}`, '#05ffa1');
+                    startVisualizer();
+                } catch (e) {
+                    console.warn('Audio play failed (autoplay restriction or missing file):', e);
+                    isPlaying = false;
+                    setStatus('PLAY FAILED 再生失敗', '#ff71ce');
+                    stopVisualizer();
+                }
+            }
+
+            function stopPlayback() {
+                audioEl.pause();
+                audioEl.currentTime = 0;
+                isPlaying = false;
+                setStatus(`停止 STOPPED\n${tapePlaylist[currentTrackIndex]?.title ?? ''}`, '#ff71ce');
+                stopVisualizer();
+            }
+
+            function pausePlayback() {
+                audioEl.pause();
+                isPlaying = false;
+                setStatus(`一時停止 PAUSED\n${tapePlaylist[currentTrackIndex]?.title ?? ''}`, '#b967ff');
+                stopVisualizer();
+            }
+
+            function nextTrack() {
+                loadTrack(currentTrackIndex + 1);
+                if (tapeInserted && isPlaying) playCurrent();
+            }
+
+            function prevTrack() {
+                loadTrack(currentTrackIndex - 1);
+                if (tapeInserted && isPlaying) playCurrent();
+            }
+
+            audioEl.addEventListener('ended', () => {
+                // Autoplay next track when current ends
+                nextTrack();
+            });
+
+            // ================
+            // VISUALIZER (REWORKED)
+            // ================
+            const visualizer = (() => {
+                if (!visualizerCanvas) return null;
+                const ctx = visualizerCanvas.getContext('2d', { alpha: true, desynchronized: true });
+                if (!ctx) return null;
+
+                const TARGET_FPS = 60;
+                const FRAME_MS = 1000 / TARGET_FPS;
+                const SAMPLES = 256;
+                const AUDIO_WAVE_GAIN = 10;
+
+                let running = false;
+                let raf = 0;
+                let lastFrameMs = 0;
+
+                let dpr = 1;
+                let cssW = 1;
+                let cssH = 1;
+
+                let timeFloat = null;
+                let timeByte = null;
+                let freqByte = null;
+                const down = new Float32Array(SAMPLES);
+                const smooth = new Float32Array(SAMPLES);
+
+                // Pre-rendered background (radial + scanlines) rebuilt only on resize
+                const bg = document.createElement('canvas');
+                const bgCtx = bg.getContext('2d');
+
+                function rebuildBackground() {
+                    if (!bgCtx) return;
+                    bg.width = Math.max(1, cssW);
+                    bg.height = Math.max(1, cssH);
+
+                    bgCtx.clearRect(0, 0, bg.width, bg.height);
+
+                    // Soft radial neon "sun" behind everything
+                    const r = Math.max(bg.width, bg.height) * 0.55;
+                    const cx = bg.width * 0.5;
+                    const cy = bg.height * 0.52;
+                    const g = bgCtx.createRadialGradient(cx, cy, 0, cx, cy, r);
+                    g.addColorStop(0, 'rgba(1, 205, 254, 0.14)');
+                    g.addColorStop(0.35, 'rgba(185, 103, 255, 0.08)');
+                    g.addColorStop(0.7, 'rgba(255, 113, 206, 0.05)');
+                    g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    bgCtx.fillStyle = g;
+                    bgCtx.fillRect(0, 0, bg.width, bg.height);
+
+                    // Thin scanlines (cheap, static)
+                    bgCtx.globalCompositeOperation = 'screen';
+                    bgCtx.fillStyle = 'rgba(255,255,255,0.025)';
+                    for (let y = 0; y < bg.height; y += 4) bgCtx.fillRect(0, y, bg.width, 1);
+                    bgCtx.globalCompositeOperation = 'source-over';
+                }
+
+                function resize() {
+                    const rect = container ? container.getBoundingClientRect() : visualizerCanvas.getBoundingClientRect();
+                    cssW = Math.max(1, Math.floor(rect.width));
+                    cssH = Math.max(1, Math.floor(rect.height));
+                    dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+                    visualizerCanvas.style.width = cssW + 'px';
+                    visualizerCanvas.style.height = cssH + 'px';
+                    visualizerCanvas.width = Math.floor(cssW * dpr);
+                    visualizerCanvas.height = Math.floor(cssH * dpr);
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                    rebuildBackground();
+                }
+
+                function sampleTimeDomain(tSeconds) {
+                    const audioActive = !!(analyser && isPlaying && !audioEl.paused);
+
+                    if (audioActive) {
+                        // Prefer float data for smoother visuals.
+                        if (typeof analyser.getFloatTimeDomainData === 'function') {
+                            if (!timeFloat || timeFloat.length !== analyser.fftSize) timeFloat = new Float32Array(analyser.fftSize);
+                            analyser.getFloatTimeDomainData(timeFloat);
+
+                            const step = timeFloat.length / SAMPLES;
+                            for (let i = 0; i < SAMPLES; i++) {
+                                // RMS-ish sampling over a small window to reduce jitter
+                                const start = Math.floor(i * step);
+                                const end = Math.min(timeFloat.length, Math.floor((i + 1) * step));
+                                let acc = 0;
+                                let count = 0;
+                                for (let j = start; j < end; j++) {
+                                    const v = timeFloat[j];
+                                    acc += v;
+                                    count++;
+                                }
+                                down[i] = count ? (acc / count) : 0;
+                            }
+                        } else {
+                            if (!timeByte || timeByte.length !== analyser.fftSize) timeByte = new Uint8Array(analyser.fftSize);
+                            analyser.getByteTimeDomainData(timeByte);
+                            const step = timeByte.length / SAMPLES;
+                            for (let i = 0; i < SAMPLES; i++) {
+                                down[i] = ((timeByte[Math.floor(i * step)] - 128) / 128);
+                            }
+                        }
+                    } else {
+                        // Idle: lissajous-style ribbon (stable, smooth)
+                        for (let i = 0; i < SAMPLES; i++) {
+                            const p = i / (SAMPLES - 1);
+                            const a = Math.sin(p * Math.PI * 6 + tSeconds * 1.6) * 0.55;
+                            const b = Math.sin(p * Math.PI * 2 - tSeconds * 0.9) * 0.25;
+                            const c = Math.sin(p * Math.PI * 12 + tSeconds * 0.35) * 0.12;
+                            down[i] = (a + b + c) * 0.85;
+                        }
+                    }
+
+                    // Boost audio amplitude (keep idle unchanged)
+                    if (audioActive) {
+                        for (let i = 0; i < SAMPLES; i++) {
+                            const v = down[i] * AUDIO_WAVE_GAIN;
+                            down[i] = Math.max(-1, Math.min(1, v));
+                        }
+                    }
+
+                    // Critically damped smoothing for stability
+                    const follow = audioActive ? 0.22 : 0.12;
+                    for (let i = 0; i < SAMPLES; i++) {
+                        smooth[i] = smooth[i] + (down[i] - smooth[i]) * follow;
+                    }
+
+                    // Frequency data for a subtle bottom haze (optional)
+                    if (audioActive && analyserData) {
+                        if (!freqByte || freqByte.length !== analyserData.length) freqByte = analyserData;
+                        analyser.getByteFrequencyData(freqByte);
+                        visualizerCanvas.classList.add('is-active');
+                    } else {
+                        visualizerCanvas.classList.remove('is-active');
+                    }
+                }
+
+                function drawWave(tSeconds) {
+                    // Background
+                    ctx.clearRect(0, 0, cssW, cssH);
+                    ctx.drawImage(bg, 0, 0, cssW, cssH);
+
+                    // Wave ribbon
+                    const mid = cssH * 0.56;
+                    const amp = cssH * 0.34;
+
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.lineJoin = 'round';
+                    ctx.lineCap = 'round';
+
+                    // Glow passes (big -> small)
+                    const passes = [
+                        { w: 14, a: 0.08, c: 'rgba(255, 113, 206, 1)', blur: 24 },
+                        { w: 7, a: 0.16, c: 'rgba(185, 103, 255, 1)', blur: 16 },
+                        { w: 3, a: 0.9, c: 'rgba(1, 205, 254, 1)', blur: 8 },
+                    ];
+
+                    for (const p of passes) {
+                        ctx.beginPath();
+                        ctx.lineWidth = p.w;
+                        ctx.strokeStyle = p.c;
+                        ctx.globalAlpha = p.a;
+                        ctx.shadowColor = p.c;
+                        ctx.shadowBlur = p.blur;
+
+                        // Quadratic smoothing
+                        let x0 = 0;
+                        let y0 = mid + smooth[0] * amp;
+                        ctx.moveTo(x0, y0);
+
+                        for (let i = 1; i < SAMPLES; i++) {
+                            const x = (i / (SAMPLES - 1)) * cssW;
+                            const y = mid + smooth[i] * amp;
+                            const cx = (x0 + x) * 0.5;
+                            const cy = (y0 + y) * 0.5;
+                            ctx.quadraticCurveTo(x0, y0, cx, cy);
+                            x0 = x;
+                            y0 = y;
+                        }
+                        ctx.lineTo(cssW, y0);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+
+                    // Subtle spectral haze at the bottom (cheap rectangles)
+                    const audioActive = !!(freqByte && analyser && isPlaying && !audioEl.paused);
+                    const hazeCount = 48;
+                    const hazeW = cssW / hazeCount;
+                    const baseY = cssH * 0.92;
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    ctx.globalAlpha = 0.45;
+                    for (let i = 0; i < hazeCount; i++) {
+                        const v = audioActive
+                            ? (freqByte[Math.min(freqByte.length - 1, i * 2)] / 255)
+                            : (0.35 + 0.25 * Math.sin(tSeconds * 0.8 + i * 0.25));
+                        const h = (0.18 + Math.pow(v, 0.9) * 0.9) * (cssH * 0.35);
+                        const x = i * hazeW;
+                        ctx.fillStyle = i % 3 === 0
+                            ? 'rgba(255, 113, 206, 0.25)'
+                            : (i % 3 === 1 ? 'rgba(185, 103, 255, 0.22)' : 'rgba(1, 205, 254, 0.22)');
+                        ctx.fillRect(x + 1, baseY - h, Math.max(1, hazeW - 2), h);
+                    }
+                    ctx.restore();
+                }
+
+                function tick(nowMs) {
+                    if (!running) return;
+                    raf = requestAnimationFrame(tick);
+
+                    if (nowMs - lastFrameMs < FRAME_MS) return;
+                    lastFrameMs = nowMs;
+
+                    // Keep canvas size stable; only resize when needed.
+                    const rect = container ? container.getBoundingClientRect() : visualizerCanvas.getBoundingClientRect();
+                    const nextW = Math.max(1, Math.floor(rect.width));
+                    const nextH = Math.max(1, Math.floor(rect.height));
+                    const nextDpr = Math.min(window.devicePixelRatio || 1, 2);
+                    if (nextW !== cssW || nextH !== cssH || nextDpr !== dpr) resize();
+
+                    const t = nowMs * 0.001;
+                    sampleTimeDomain(t);
+                    drawWave(t);
+                }
+
+                function start() {
+                    if (running) return;
+                    running = true;
+                    resize();
+                    lastFrameMs = performance.now();
+                    raf = requestAnimationFrame(tick);
+                }
+
+                function stop(clear = false) {
+                    running = false;
+                    if (raf) cancelAnimationFrame(raf);
+                    raf = 0;
+                    if (clear) ctx.clearRect(0, 0, cssW, cssH);
+                }
+
+                return { start, stop, resize };
+            })();
+
+            function resizeVisualizerCanvas() {
+                visualizer?.resize();
+            }
+
+            function startVisualizer() {
+                visualizer?.start();
+            }
+
+            function stopVisualizer(offscreen) {
+                // If offscreen, fully stop + clear. Otherwise keep it visible (idle mode).
+                if (offscreen) visualizer?.stop(true);
+            }
+
+            // Pause 3D render + visualizer when off-screen / tab hidden
+            let playerRaf = 0;
+            let playerIsRunning = false;
+            let playerInView = true;
+
+            function playerLoop() {
+                if (!playerIsRunning) return;
+                playerRaf = requestAnimationFrame(playerLoop);
+
+                const t = Date.now() * 0.001;
+
+                if (!isDragging) {
+                    // Inertia
+                    playerGroup.rotation.x += rotVel.x;
+                    playerGroup.rotation.y += rotVel.y;
+                    playerGroup.rotation.x = Math.max(-0.9, Math.min(0.6, playerGroup.rotation.x));
+                    rotVel.x *= damping;
+                    rotVel.y *= damping;
+                }
+
+                renderer.render(scene, camera);
+
+                if (tapeInserted && isPlaying) {
+                    leftReel.rotation.y -= 0.1;
+                    rightReel.rotation.y -= 0.1;
+                }
+
+                // Animate lights
+                pinkLight.position.x = Math.sin(t * 0.5) * 5;
+                cyanLight.position.z = Math.cos(t * 0.5) * 5;
+
+                // Subtle grid animation
+                gridHelper.rotation.y += 0.001;
+            }
+
+            function playerStart() {
+                if (playerIsRunning) return;
+                playerIsRunning = true;
+                playerRaf = requestAnimationFrame(playerLoop);
+            }
+
+            function playerStop() {
+                playerIsRunning = false;
+                if (playerRaf) cancelAnimationFrame(playerRaf);
+                playerRaf = 0;
+            }
+
+            function playerUpdateRunning() {
+                const shouldRun = playerInView && !document.hidden;
+                if (shouldRun) {
+                    playerStart();
+                    // Always show the oscillator as a background when the cassette area is visible.
+                    startVisualizer();
+                } else {
+                    playerStop();
+                    // Keep audio playing, but stop drawing the visualizer when off-screen.
+                    stopVisualizer(true);
+                }
+            }
+
+            if (playerSection) {
+                const playerObserver = new IntersectionObserver(
+                    (entries) => {
+                        playerInView = entries.some(e => e.isIntersecting);
+                        playerUpdateRunning();
+                    },
+                    { threshold: 0.05 }
+                );
+                playerObserver.observe(playerSection);
+            }
+            document.addEventListener('visibilitychange', playerUpdateRunning);
+
             container.style.touchAction = 'none';
 
             container.addEventListener('pointerdown', (e) => {
@@ -1433,28 +2351,27 @@
                 const targetY = btn.userData.originalY - 0.2;
                 buttons.forEach(b => b.position.y = b.userData.originalY);
                 btn.position.y = targetY;
-                const status = document.getElementById('status-display');
 
                 if (!tapeInserted) {
-                    status.innerText = 'NO TAPE テープなし';
-                    status.style.color = '#ff71ce';
+                    setStatus('NO TAPE テープなし', '#ff71ce');
                     return;
                 }
 
                 if (btn.userData.name === 'play') {
-                    status.innerText = '再生中 PLAYING >>';
-                    status.style.color = '#05ffa1';
-                    isPlaying = true;
+                    // Toggle play/pause when already playing
+                    if (isPlaying && !audioEl.paused) {
+                        pausePlayback();
+                    } else {
+                        playCurrent();
+                    }
                 } else if (btn.userData.name === 'stop') {
-                    status.innerText = '停止 STOPPED';
-                    status.style.color = '#ff71ce';
-                    isPlaying = false;
+                    stopPlayback();
                 } else if (btn.userData.name === 'rewind') {
-                    status.innerText = '巻き戻し <<';
-                    status.style.color = '#01cdfe';
+                    setStatus('巻き戻し <<', '#01cdfe');
+                    prevTrack();
                 } else {
-                    status.innerText = '早送り >>';
-                    status.style.color = '#b967ff';
+                    setStatus('早送り >>', '#b967ff');
+                    nextTrack();
                 }
             }
 
@@ -1470,40 +2387,14 @@
                         clearInterval(insertAnim);
                         tapeGroup.position.set(0, 0.25, 0);
                         tapeInserted = true;
-                        document.getElementById('status-display').innerText = 'ロード完了 LOADED';
-                        document.getElementById('status-display').style.color = '#01cdfe';
+                        loadTrack(0);
+                        setStatus('ロード完了 LOADED', '#01cdfe');
                     }
                 }, 16);
             });
 
-            function animate() {
-                requestAnimationFrame(animate);
-                const t = Date.now() * 0.001;
-
-                if (!isDragging) {
-                    // Inertia
-                    playerGroup.rotation.x += rotVel.x;
-                    playerGroup.rotation.y += rotVel.y;
-                    playerGroup.rotation.x = Math.max(-0.9, Math.min(0.6, playerGroup.rotation.x));
-                    rotVel.x *= damping;
-                    rotVel.y *= damping;
-                }
-
-                renderer.render(scene, camera);
-
-                if (tapeInserted && isPlaying) {
-                    leftReel.rotation.y -= 0.1;
-                    rightReel.rotation.y -= 0.1;
-                }
-
-                // Animate lights
-                pinkLight.position.x = Math.sin(t * 0.5) * 5;
-                cyanLight.position.z = Math.cos(t * 0.5) * 5;
-
-                // Subtle grid animation
-                gridHelper.rotation.y += 0.001;
-            }
-            animate();
+            // Start/stop loop based on visibility
+            playerUpdateRunning();
 
             window.addEventListener('resize', () => {
                 width = container.clientWidth;
@@ -1511,6 +2402,7 @@
                 camera.aspect = width / height;
                 camera.updateProjectionMatrix();
                 renderer.setSize(width, height);
+                resizeVisualizerCanvas();
             });
         })();
     </script>
