@@ -631,24 +631,18 @@
     "#aa96da",
   ];
 
-  // Stickers list
+  // Stickers list - images from image_paint folder
   const stickers = [
-    "🌴",
-    "🗿",
-    "🌸",
-    "💎",
-    "🎵",
-    "💜",
-    "🌊",
-    "☀️",
-    "🏛️",
-    "🌺",
-    "💿",
-    "📼",
-    "🎧",
-    "✨",
-    "🦩",
-    "🍇",
+    { src: "image_paint/pngtree-dolphin-on-transparent-background-png-image_14018423.png", name: "dolphin" },
+    { src: "image_paint/pngtree-cute-cat-image-png-image_14938303.png", name: "cat" },
+    { src: "image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png", name: "windows" },
+    { src: "image_paint/png-clipart-red-and-silver-crowbar-used-crowbar-tools-and-parts-crowbars-thumbnail.png", name: "crowbar" },
+    { src: "image_paint/pngtree-water-bottle-to-drink-png-image_13038051.png", name: "bottle" },
+    { src: "image_paint/png-clipart-hephaestus-bust-liebieghaus-athena-parthenos-zeus-greek-statue-stone-carving-aphrodite-thumbnail.png", name: "statue" },
+    { src: "image_paint/png-clipart-wikipedia-logo-wordmark-wikimedia-foundation-bolder-globe-text.png", name: "wikipedia" },
+    { src: "image_paint/png-clipart-anime-pixel-art-kawaii-anime-child-face.png", name: "anime" },
+    { src: "image_paint/png-clipart-sunglasses-graphy-glasses-angle-text-thumbnail.png", name: "sunglasses" },
+    { src: "image_paint/pngtree-cd-png-element-png-image_2344136.jpg", name: "cd" },
   ];
 
   let currentBgColor = "#ff71ce"; // Pink vaporwave default (so turquoise text is visible)
@@ -738,7 +732,14 @@
   stickers.forEach((sticker) => {
     const stickerDiv = document.createElement("div");
     stickerDiv.className = "paint-sticker";
-    stickerDiv.textContent = sticker;
+
+    const img = document.createElement("img");
+    img.src = sticker.src;
+    img.alt = sticker.name;
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "contain";
+    stickerDiv.appendChild(img);
 
     stickerDiv.addEventListener("click", () => {
       document
@@ -746,7 +747,7 @@
         .forEach((s) => s.classList.remove("selected"));
       stickerDiv.classList.add("selected");
       selectedSticker = sticker;
-      statusEl.textContent = "クリックして配置 Click to place: " + sticker;
+      statusEl.textContent = "クリックして配置 Click to place: " + sticker.name;
       canvas.style.cursor = "copy";
     });
 
@@ -763,9 +764,19 @@
 
     const stickerEl = document.createElement("div");
     stickerEl.className = "canvas-sticker";
-    stickerEl.textContent = selectedSticker;
+
+    const img = document.createElement("img");
+    img.src = selectedSticker.src;
+    img.alt = selectedSticker.name;
+    img.style.width = "64px";
+    img.style.height = "64px";
+    img.style.objectFit = "contain";
+    img.draggable = false;
+    stickerEl.appendChild(img);
+
     stickerEl.style.left = x + "px";
     stickerEl.style.top = y + "px";
+    stickerEl.dataset.src = selectedSticker.src;
 
     // Make sticker draggable
     let isDragging = false;
@@ -921,11 +932,13 @@
     tempCtx.drawImage(canvas, 0, 0);
 
     const stickerElements = stickersLayer.querySelectorAll(".canvas-sticker");
-    stickerElements.forEach((sticker) => {
-      const x = parseInt(sticker.style.left) || 0;
-      const y = parseInt(sticker.style.top) || 0;
-      tempCtx.font = "48px serif";
-      tempCtx.fillText(sticker.textContent, x - 24, y + 16);
+    stickerElements.forEach((stickerEl) => {
+      const x = parseInt(stickerEl.style.left) || 0;
+      const y = parseInt(stickerEl.style.top) || 0;
+      const img = stickerEl.querySelector("img");
+      if (img && img.complete) {
+        tempCtx.drawImage(img, x - 32, y - 32, 64, 64);
+      }
     });
 
     return tempCanvas;
