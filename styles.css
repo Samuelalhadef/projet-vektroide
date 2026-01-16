@@ -533,8 +533,8 @@ section {
     4px 4px 10px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 20;
-  width: 100%;
-  margin: 50px 0 0 50px;
+  width: min(100%, 608px);
+  margin: 28px auto 0;
   max-width: 608px;
 }
 
@@ -745,8 +745,8 @@ section {
   align-items: flex-start;
   gap: 20px;
   width: 100%;
-  justify-content: flex-start;
-  padding: 18px 20px 18px 50px;
+  justify-content: center;
+  padding: 18px 20px;
   margin: 0 auto;
 }
 
@@ -768,6 +768,7 @@ section {
   height: 100%;
   z-index: 10;
   pointer-events: none;
+  display: none;
 }
 
 .generate-cassette-btn,
@@ -998,61 +999,7 @@ section {
   }
 }
 
-/* Output slot on the right side of Paint window */
-.cassette-output-slot {
-  position: absolute;
-  right: -10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 350px;
-  background: linear-gradient(90deg, #2a2a2a, #1a1a1a);
-  border: 3px solid #444;
-  border-left: 3px solid #666;
-  border-radius: 0 10px 10px 0;
-  box-shadow: inset -8px 0 15px rgba(0, 0, 0, 0.7),
-    2px 0 10px rgba(0, 0, 0, 0.5);
-  z-index: 60;
-}
-
-.cassette-output-slot::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 15px;
-  bottom: 15px;
-  width: 6px;
-  background: linear-gradient(180deg, #111 0%, #222 50%, #111 100%);
-  border-radius: 3px;
-}
-
-.cassette-output-slot::after {
-  content: "▶";
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #0f0;
-  font-size: 10px;
-  text-shadow: 0 0 5px #0f0;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.paint-window.printing .cassette-output-slot::after {
-  opacity: 1;
-  animation: slotBlink 0.5s infinite;
-}
-
-@keyframes slotBlink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
+/* (Paint cassette output slot removed — cassette now comes from the PC reader) */
 
 /* ============================================
            PLAYER SECTION
@@ -1268,23 +1215,41 @@ button:focus {
 
   /* Desktop scaling inside the PC screen (1 = full size). */
   --pc-desktop-scale: 0.34;
+
+  /* Cassette reader anchor (fine-tune these) */
+  --pc-reader-x: 68%;
+  --pc-reader-y: 78%;
+  --pc-reader-w: 16%;
+  --pc-reader-h: 6%;
+
+  /* Start the PC lower in the section (applies before zoom overrides) */
+  --pc-start-lower: clamp(40px, 8vh, 140px);
 }
 
 #pc-boot {
   position: relative;
-  width: min(86vw, 980px);
-  height: auto;
-  max-height: 76vh;
-  aspect-ratio: 4 / 3;
+  --pc-max-w: min(95vw, 980px);
+  --pc-max-h: 90vh;
+  /* Keep a stable 4:3 box that never exceeds either constraint */
+  --pc-fit-h: min(var(--pc-max-h), calc(var(--pc-max-w) * 0.7));
+  height: var(--pc-fit-h);
+  width: min(var(--pc-max-w), calc(var(--pc-fit-h) * 1.5));
   display: grid;
   place-items: center;
   /* Zoom tuning knobs (JS uses offsets; origin is pure CSS) */
   --pc-zoom-origin-x: 50%;
-  --pc-zoom-origin-y: 55%;
+  --pc-zoom-origin-y: 50%;
   transform-origin: var(--pc-zoom-origin-x) var(--pc-zoom-origin-y);
   will-change: transform;
+  transition: none;
   justify-self: center;
   align-self: center;
+  margin-top: var(--pc-start-lower);
+}
+
+/* Only animate when we force a zoom-out (so scroll-driven transforms stay crisp) */
+#pc-boot-layer.is-force-zoomed-out #pc-boot {
+  transition: transform 720ms cubic-bezier(0.2, 0.95, 0.2, 1);
 }
 
 /* Screen starts "off" (black). JS toggles .is-screen-on (no fading). */
@@ -1742,6 +1707,56 @@ button:focus {
     drop-shadow(0 0 30px rgba(185, 103, 255, 0.1));
   user-select: none;
   pointer-events: none;
+}
+
+/* Cassette reader anchor (positioned over the PC image; shown when zoomed out) */
+#pc-cassette-reader {
+  position: absolute;
+  left: var(--pc-reader-x);
+  top: var(--pc-reader-y);
+  width: var(--pc-reader-w);
+  height: var(--pc-reader-h);
+  transform: translate(-50%, -50%);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    0 12px 28px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity 260ms ease;
+}
+
+#pc-boot-layer.is-force-zoomed-out #pc-cassette-reader {
+  opacity: 1;
+}
+
+/* Floating 3D cassette (single instance, follows scroll, inserts into player) */
+#floating-cassette-3d {
+  position: fixed;
+  left: 50vw;
+  top: 50vh;
+  width: 220px;
+  height: 160px;
+  transform: translate(-50%, -50%)
+    translate3d(var(--fc-x, 0px), var(--fc-y, 0px), 0)
+    rotate(var(--fc-rot, 0deg));
+  opacity: 0;
+  z-index: 15000;
+  pointer-events: auto;
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.55));
+  transition: opacity 240ms ease,
+    transform 900ms cubic-bezier(0.2, 0.95, 0.2, 1);
+}
+
+#floating-cassette-3d.is-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #floating-cassette-3d {
+    transition: none;
+  }
 }
 
 /* Remove extra screen pseudo overlays (requested) */

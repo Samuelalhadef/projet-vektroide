@@ -419,9 +419,6 @@
                                                 <span id="paint-status">Ready 準備完了</span>
                                                 <span id="paint-coords">0, 0</span>
                                             </div>
-
-                                            <!-- Cassette output slot on right side of Paint window -->
-                                            <div class="cassette-output-slot"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -430,11 +427,16 @@
 
                     </div>
                     <img class="pc-boot-image" src="image_paint/vektroid-pc-transparent.webp" alt="Retro PC" />
+                    <!-- Cassette reader anchor (you can fine-tune position in CSS vars) -->
+                    <div id="pc-cassette-reader" aria-hidden="true"></div>
 
                 </div>
             </div>
         </section>
     </div>
+
+    <!-- Single floating 3D cassette canvas (spawned by PC, follows scroll, inserts into player) -->
+    <canvas id="floating-cassette-3d" hidden aria-hidden="true"></canvas>
 
     <!-- Player Section -->
     <section id="player-section">

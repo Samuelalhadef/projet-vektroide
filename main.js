@@ -202,21 +202,32 @@
     const introProgress = Math.min(1, Math.max(0, progress / introEnd));
 
     if (pcBootLayer && pcBoot) {
-      // Baseline zoom. Fine-tune later by adjusting CSS vars.
-      const z = 1 + introProgress * 2.4;
+      const forceZoomOut = pcBootLayer.classList.contains(
+        "is-force-zoomed-out"
+      );
 
-      // Configurable zoom target (offset the PC as we zoom).
-      // Negative Y focuses LOWER on the PC image (brings lower area toward center).
-      const fullOffsetX = readCssPxVar(pcBootLayer, "--pc-zoom-offset-x", 0);
-      const fullOffsetY = readCssPxVar(pcBootLayer, "--pc-zoom-offset-y", 0);
-      const tx = fullOffsetX * introProgress;
-      const ty = fullOffsetY * introProgress;
+      if (forceZoomOut) {
+        // Override scroll-zoom so the PC stays centered and fully visible.
+        pcBoot.style.transform = "translate3d(0px, 0px, 0) scale(1)";
+        pcBootLayer.classList.add("is-screen-on");
+        pcBootLayer.classList.remove("is-screen-only");
+      } else {
+        // Baseline zoom. Fine-tune later by adjusting CSS vars.
+        const z = 1 + introProgress * 2.4;
 
-      pcBoot.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
+        // Configurable zoom target (offset the PC as we zoom).
+        // Negative Y focuses LOWER on the PC image (brings lower area toward center).
+        const fullOffsetX = readCssPxVar(pcBootLayer, "--pc-zoom-offset-x", 0);
+        const fullOffsetY = readCssPxVar(pcBootLayer, "--pc-zoom-offset-y", 0);
+        const tx = fullOffsetX * introProgress;
+        const ty = fullOffsetY * introProgress;
 
-      // No fading: just toggle "screen on" and "screen only" at thresholds.
-      pcBootLayer.classList.toggle("is-screen-on", introProgress >= 0.18);
-      pcBootLayer.classList.toggle("is-screen-only", introProgress >= 0.95);
+        pcBoot.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
+
+        // No fading: just toggle "screen on" and "screen only" at thresholds.
+        pcBootLayer.classList.toggle("is-screen-on", introProgress >= 0.18);
+        pcBootLayer.classList.toggle("is-screen-only", introProgress >= 0.95);
+      }
     }
 
     // Album slides from right (100%) to left (0%)
@@ -1532,6 +1543,271 @@
     window.dispatchEvent(new CustomEvent("vektroid:cassette-generated"));
   }
 
+  function getCassetteState() {
+    VEKTROID.cassetteState = VEKTROID.cassetteState || {
+      created: false,
+      inserted: false,
+      inFlight: false,
+      fx: 0,
+      fy: 0,
+      rot: 0,
+      handlersReady: false,
+    };
+    return VEKTROID.cassetteState;
+  }
+
+  function isTvSectionOnScreen() {
+    const tv = document.getElementById("tv-static-section");
+    if (!tv) return false;
+    const r = tv.getBoundingClientRect();
+    return r.bottom > 0 && r.top < window.innerHeight;
+  }
+
+  function positionFloatingCassette() {
+    const state = getCassetteState();
+    if (!state.created || state.inserted) return;
+
+    const cassetteEl = document.getElementById("floating-cassette-3d");
+    if (!cassetteEl || cassetteEl.hidden) return;
+
+    const readerEl = document.getElementById("pc-cassette-reader");
+
+    if (isTvSectionOnScreen() && readerEl) {
+      const rr = readerEl.getBoundingClientRect();
+      cassetteEl.style.left = rr.left + rr.width / 2 + "px";
+      cassetteEl.style.top = rr.top + rr.height / 2 + "px";
+      resizeFloatingCassette3D();
+      return;
+    }
+
+    // Once the PC section scrolls away, keep the cassette on-screen.
+    cassetteEl.style.left = Math.round(window.innerWidth * 0.72) + "px";
+    cassetteEl.style.top = Math.round(window.innerHeight * 0.62) + "px";
+    resizeFloatingCassette3D();
+  }
+
+  function ensureCassetteFollowHandlers() {
+    const state = getCassetteState();
+    if (state.handlersReady) return;
+    state.handlersReady = true;
+
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        positionFloatingCassette();
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", positionFloatingCassette);
+  }
+
+  function forcePcZoomOut() {
+    const pcBootLayer = document.getElementById("pc-boot-layer");
+    pcBootLayer?.classList.add("is-force-zoomed-out");
+
+    // Trigger the transform immediately so the transition runs without needing a scroll event.
+    const pcBoot = document.getElementById("pc-boot");
+    if (pcBoot) {
+      requestAnimationFrame(() => {
+        pcBoot.style.transform = "translate3d(0px, 0px, 0) scale(1)";
+      });
+    }
+  }
+
+  // ===============================
+  // FLOATING 3D CASSETTE (overlay)
+  // ===============================
+  let floatRenderer = null;
+  let floatScene = null;
+  let floatCamera = null;
+  let floatCassette = null;
+  let floatRaf = 0;
+  let floatIsRunning = false;
+  let floatSpawn = null;
+  let floatDragging = false;
+  let floatPointerId = null;
+  let floatPrev = { x: 0, y: 0 };
+  let floatRotVel = { x: 0, y: 0 };
+
+  function getFloatingCassetteCanvas() {
+    return document.getElementById("floating-cassette-3d");
+  }
+
+  function resizeFloatingCassette3D() {
+    const canvas = getFloatingCassetteCanvas();
+    if (!canvas || !floatRenderer || !floatCamera) return;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width));
+    const h = Math.max(1, Math.floor(rect.height));
+    floatRenderer.setSize(w, h, false);
+    floatCamera.aspect = w / h;
+    floatCamera.updateProjectionMatrix();
+  }
+
+  function ensureFloatingCassette3D() {
+    const canvas = getFloatingCassetteCanvas();
+    if (!canvas || floatRenderer) return;
+
+    floatRenderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+    floatRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    floatRenderer.outputEncoding = THREE.sRGBEncoding;
+    floatRenderer.setClearColor(0x000000, 0);
+
+    floatScene = new THREE.Scene();
+    floatScene.background = null;
+
+    floatCamera = new THREE.PerspectiveCamera(48, 1, 0.1, 50);
+    floatCamera.position.set(0, 0.65, 6.2);
+    floatCamera.lookAt(0, 0.1, 0);
+
+    const amb = new THREE.AmbientLight(0xffffff, 0.85);
+    floatScene.add(amb);
+    const key = new THREE.DirectionalLight(0xffffff, 1.15);
+    key.position.set(3, 4, 5);
+    floatScene.add(key);
+    const rim = new THREE.PointLight(0x01cdfe, 1.35, 20);
+    rim.position.set(-4, 1.6, 2);
+    floatScene.add(rim);
+    const fill = new THREE.PointLight(0xff71ce, 1.05, 20);
+    fill.position.set(4, 1.2, 2);
+    floatScene.add(fill);
+
+    // Reuse the cassette geometry builder (ensures label material is the same).
+    floatCassette = buildCassetteGroup();
+    // Facing direction: tweak these to match the exact "coming out" orientation.
+    floatCassette.rotation.set(Math.PI / 2, Math.PI, Math.PI / 2);
+    floatCassette.position.set(0, 0, 0);
+    floatScene.add(floatCassette);
+
+    resizeFloatingCassette3D();
+    window.addEventListener("resize", resizeFloatingCassette3D);
+
+    // Drag-to-rotate interaction
+    canvas.addEventListener("pointerdown", (e) => {
+      floatDragging = true;
+      floatPointerId = e.pointerId;
+      floatPrev = { x: e.clientX, y: e.clientY };
+      floatRotVel = { x: 0, y: 0 };
+      canvas.setPointerCapture(e.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!floatDragging || e.pointerId !== floatPointerId || !floatCassette)
+        return;
+      const dx = e.clientX - floatPrev.x;
+      const dy = e.clientY - floatPrev.y;
+      floatPrev = { x: e.clientX, y: e.clientY };
+
+      const s = 0.008;
+      floatCassette.rotation.y += dx * s;
+      floatCassette.rotation.x += dy * s;
+      floatCassette.rotation.x = Math.max(
+        -0.6,
+        Math.min(0.6, floatCassette.rotation.x)
+      );
+      floatRotVel = { x: dy * s, y: dx * s };
+    });
+
+    function endDrag(e) {
+      if (e.pointerId !== floatPointerId) return;
+      floatDragging = false;
+      floatPointerId = null;
+    }
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+  }
+
+  function floatStart() {
+    if (floatIsRunning) return;
+    floatIsRunning = true;
+    floatRaf = requestAnimationFrame(floatLoop);
+  }
+
+  function floatStop() {
+    floatIsRunning = false;
+    if (floatRaf) cancelAnimationFrame(floatRaf);
+    floatRaf = 0;
+  }
+
+  // Allow other sections (player) to stop the floating cassette renderer.
+  VEKTROID.stopFloatingCassette3D = floatStop;
+
+  function floatLoop(now) {
+    if (!floatIsRunning || !floatRenderer || !floatScene || !floatCamera)
+      return;
+    floatRaf = requestAnimationFrame(floatLoop);
+
+    const t = now * 0.001;
+
+    if (floatSpawn && floatCassette) {
+      const p = Math.min(1, Math.max(0, (now - floatSpawn.t0) / floatSpawn.d));
+      const e = 1 - Math.pow(1 - p, 3);
+      floatCassette.position.x =
+        floatSpawn.x0 + (floatSpawn.x1 - floatSpawn.x0) * e;
+      if (p >= 1) floatSpawn = null;
+    }
+
+    if (floatCassette?.userData?.leftReel) {
+      floatCassette.userData.leftReel.rotation.y -= 0.06;
+      floatCassette.userData.rightReel.rotation.y += 0.06;
+    }
+
+    if (!floatDragging && floatCassette) {
+      // gentle idle + inertial spin
+      floatCassette.rotation.y += (floatRotVel.y || 0) * 0.92;
+      floatCassette.rotation.x += (floatRotVel.x || 0) * 0.92;
+      floatRotVel.y *= 0.92;
+      floatRotVel.x *= 0.92;
+      floatCassette.position.y = Math.sin(t * 1.1) * 0.02;
+    }
+
+    floatRenderer.render(floatScene, floatCamera);
+  }
+
+  function showFloatingCassetteFromReader() {
+    const state = getCassetteState();
+    const canvas = getFloatingCassetteCanvas();
+    if (!canvas) return;
+
+    ensureFloatingCassette3D();
+    floatStart();
+
+    if (floatCassette) {
+      // Start tucked in, then slide out in 3D space.
+      floatCassette.position.x = -0.8;
+      floatSpawn = { t0: performance.now(), d: 900, x0: -0.8, x1: 0.3 };
+    }
+
+    canvas.hidden = false;
+    canvas.classList.add("is-visible");
+
+    // Start in the reader, then slide out.
+    state.fx = 0;
+    state.fy = 0;
+    state.rot = 0;
+    canvas.style.setProperty("--fc-x", state.fx + "px");
+    canvas.style.setProperty("--fc-y", state.fy + "px");
+    canvas.style.setProperty("--fc-rot", state.rot + "deg");
+
+    positionFloatingCassette();
+
+    requestAnimationFrame(() => {
+      state.fx = 90;
+      state.fy = -10;
+      canvas.style.setProperty("--fc-x", state.fx + "px");
+      canvas.style.setProperty("--fc-y", state.fy + "px");
+    });
+  }
+
   function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
   }
@@ -1643,6 +1919,9 @@
     generateBtn.disabled = true;
     generateBtn.style.opacity = "0.6";
 
+    // Zoom the PC back out while the cassette is generating.
+    forcePcZoomOut();
+
     // Capture design BEFORE showing machine screen
     const designCanvas = capturePaintDesign();
 
@@ -1672,11 +1951,19 @@
             machineScreen.remove();
             smokeContainer.remove();
 
-            // Apply label + slide out the 3D cassette
-            // (Initialize WebGL first so the label material exists)
-            ensureCassette3D();
+            // Apply label + spawn a single cassette from the PC reader.
             applyLabelFromDesign(designCanvas);
-            startCassetteSlideOut();
+            const state = getCassetteState();
+            state.created = true;
+            state.inserted = false;
+            state.inFlight = false;
+            ensureCassetteFollowHandlers();
+            showFloatingCassetteFromReader();
+
+            setStatus("カセット完成! Scroll to the player and insert.");
+            generateBtn.disabled = false;
+            generateBtn.style.opacity = "1";
+            isGenerating = false;
           }, 300);
         }, 500);
       });
@@ -1967,6 +2254,7 @@
 
   // Keep the tape in playerGroup local space so it always matches rotation
   tapeGroup.position.set(6, 0.25, 0);
+  tapeGroup.visible = false;
   playerGroup.add(tapeGroup);
 
   // Initialize label based on whether a cassette has already been generated
@@ -2588,13 +2876,70 @@
   document.getElementById("insert-tape-btn").addEventListener("click", () => {
     if (tapeInserted) return;
 
-    if (!VEKTROID.generatedCassette?.ready) {
+    const cassetteState = VEKTROID.cassetteState;
+
+    if (!VEKTROID.generatedCassette?.ready || !cassetteState?.created) {
       setStatus("NO CASSETTE\nPaintで先に生成してね", "#ff71ce");
       return;
     }
 
+    if (cassetteState.inserted || cassetteState.inFlight) return;
+    cassetteState.inFlight = true;
+
+    // Animate the floating cassette into the player area (single cassette; no duplicates).
+    const floatingEl = document.getElementById("floating-cassette-3d");
+    if (floatingEl && !floatingEl.hidden) {
+      const fr = floatingEl.getBoundingClientRect();
+      const fromX = fr.left + fr.width / 2;
+      const fromY = fr.top + fr.height / 2;
+
+      const pr = container.getBoundingClientRect();
+      const targetX = pr.left + pr.width * 0.52;
+      const targetY = pr.top + pr.height * 0.7;
+
+      const dx = targetX - fromX;
+      const dy = targetY - fromY;
+
+      cassetteState.fx = (cassetteState.fx || 0) + dx;
+      cassetteState.fy = (cassetteState.fy || 0) + dy;
+      cassetteState.rot = -18;
+
+      floatingEl.style.setProperty("--fc-x", cassetteState.fx + "px");
+      floatingEl.style.setProperty("--fc-y", cassetteState.fy + "px");
+      floatingEl.style.setProperty("--fc-rot", cassetteState.rot + "deg");
+
+      setTimeout(() => {
+        floatingEl.hidden = true;
+        floatingEl.classList.remove("is-visible");
+        floatingEl.style.setProperty("--fc-x", "0px");
+        floatingEl.style.setProperty("--fc-y", "0px");
+        floatingEl.style.setProperty("--fc-rot", "0deg");
+
+        // Stop rendering the floating cassette when hidden.
+        VEKTROID.stopFloatingCassette3D?.();
+
+        cassetteState.created = false;
+        cassetteState.inserted = true;
+        cassetteState.inFlight = false;
+
+        document
+          .getElementById("pc-boot-layer")
+          ?.classList.remove("is-force-zoomed-out");
+      }, 720);
+    } else {
+      cassetteState.created = false;
+      cassetteState.inserted = true;
+      cassetteState.inFlight = false;
+      document
+        .getElementById("pc-boot-layer")
+        ?.classList.remove("is-force-zoomed-out");
+    }
+
     // Ensure the tape label matches the generated cassette before inserting.
     setTapeLabel({ title: "" });
+
+    // Only show the player tape once we start inserting.
+    tapeGroup.visible = true;
 
     const startX = tapeGroup.position.x;
     const endX = 0;
