@@ -297,7 +297,7 @@
         </div>
         <div class="xp-nav-links">
             <a href="#hero">System</a>
-            <a href="#album-section">Artifacts</a>
+            <a href="#pc-section">Desktop</a>
             <a href="#player-section">Hardware</a>
         </div>
     </nav>
@@ -322,118 +322,159 @@
         </div>
     </section>
 
-    <!-- TV Transition Wrapper (for sticky scroll effect) -->
-    <div id="tv-transition-wrapper">
-        <!-- TV Color Bars Section -->
-        <section id="tv-static-section">
-            <!-- Boot/arrival state: PC in darkness. Scroll zooms into the screen. -->
-            <div id="pc-boot-layer">
-                <!-- Checkerboard floor -->
-                <div class="vaporwave-floor">
-                    <div class="floor-stars" id="floor-stars"></div>
-                    <div class="floor-reflection"></div>
+    <!-- PC Section with interactive desktop -->
+    <section id="pc-section">
+        <!-- Checkerboard floor -->
+        <div class="vaporwave-floor">
+            <div class="floor-stars" id="floor-stars"></div>
+            <div class="floor-reflection"></div>
+        </div>
+
+        <!-- PC Container -->
+        <div id="pc-container" class="pc-off">
+            <!-- Screen mask (contains all screen content).
+                 IMPORTANT: this sits BEHIND the transparent PC image (see z-index in CSS). -->
+            <div class="pc-screen-mask" aria-label="PC screen">
+                <!-- CRT Filter Overlay -->
+                <div class="crt-filter">
+                    <div class="crt-scanlines"></div>
+                    <div class="crt-glow"></div>
+                    <div class="crt-flicker"></div>
+                    <div class="crt-rgb-shift"></div>
                 </div>
-                <div id="pc-boot">
 
-                    <!-- Screen mask (tune position/size in CSS vars later) -->
-                    <div class="pc-screen-mask">
-                        <!-- CRT Filter Overlay -->
-                        <div class="crt-filter">
-                            <div class="crt-scanlines"></div>
-                            <div class="crt-glow"></div>
-                            <div class="crt-flicker"></div>
-                            <div class="crt-rgb-shift"></div>
-                        </div>
-                        <div class="tv-color-bars">
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                            <div class="tv-color-bar"></div>
-                        </div>
-                        <div class="tv-static-overlay"></div>
-                        <div class="tv-static-vignette"></div>
-                        <div class="tv-static-text">NO SIGNAL 信号なし</div>
-
-                        <!-- Screen starts "off"; JS toggles it on without fading -->
-                        <div class="pc-screen-off" aria-hidden="true"></div>
-
-                        <!-- Album/Paint desktop lives inside the PC screen -->
-                        <div id="album-slide-container">
-                            <section id="album-section">
-                                <div class="paint-and-cassette-container">
-                                    <div class="paint-stage">
-                                        <canvas id="cassette-gen-canvas" aria-hidden="true"></canvas>
-                                        <!-- Paint Window Interface -->
-                                        <div class="paint-window">
-                                            <div class="paint-titlebar">
-                                                <span><img
-                                                        src="image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png"
-                                                        alt="Paint" class="titlebar-icon"> untitled - Paint ペイント</span>
-                                                <div class="paint-titlebar-buttons">
-                                                    <div class="paint-titlebar-btn">_</div>
-                                                    <div class="paint-titlebar-btn">□</div>
-                                                    <div class="paint-titlebar-btn">✕</div>
-                                                </div>
-                                            </div>
-                                            <div class="paint-menubar">
-                                                <span><u>F</u>ile ファイル</span>
-                                                <span><u>E</u>dit 編集</span>
-                                                <span><u>V</u>iew 表示</span>
-                                                <span><u>I</u>mage 画像</span>
-                                                <span><u>C</u>olors 色</span>
-                                                <span><u>H</u>elp ヘルプ</span>
-                                            </div>
-                                            <div class="paint-toolbar">
-                                                <div class="paint-tool-section">
-                                                    <div class="paint-tool-section-title">背景色 BG</div>
-                                                    <div class="paint-color-palette" id="color-palette">
-                                                        <!-- Colors will be added by JS -->
-                                                    </div>
-                                                </div>
-                                                <div class="paint-tool-section">
-                                                    <div class="paint-tool-section-title">ステッカー STICKERS</div>
-                                                    <div class="paint-stickers-panel" id="stickers-panel">
-                                                        <!-- Stickers will be added by JS -->
-                                                    </div>
-                                                </div>
-                                                <button class="generate-art-btn" id="generate-art-btn">
-                                                    <span class="btn-text">GENERATE ART<br>アート生成</span>
-                                                </button>
-                                                <!-- Generate Cassette Button in toolbar -->
-                                                <button class="generate-cassette-btn" id="generate-cassette-btn">
-                                                    <span class="btn-icon"><img
-                                                            src="FloralShoppeCassette/tape cover.png" alt="Cassette"
-                                                            class="cassette-icon"></span>
-                                                    <span class="btn-text">CREATE<br>カセット生成</span>
-                                                </button>
-                                            </div>
-                                            <div class="paint-canvas-container">
-                                                <canvas id="paint-canvas"></canvas>
-                                                <div id="stickers-layer"></div>
-                                            </div>
-                                            <div class="paint-statusbar">
-                                                <span id="paint-status">Ready 準備完了</span>
-                                                <span id="paint-coords">0, 0</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-
+                <!-- No Signal Screen (initial state) -->
+                <div id="no-signal-screen" class="screen-content active">
+                    <div class="tv-color-bars">
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
+                        <div class="tv-color-bar"></div>
                     </div>
-                    <img class="pc-boot-image" src="image_paint/vektroid-pc-transparent.webp" alt="Retro PC" />
-                    <!-- Cassette reader anchor (you can fine-tune position in CSS vars) -->
-                    <div id="pc-cassette-reader" aria-hidden="true"></div>
+                    <div class="tv-static-overlay"></div>
+                    <div class="tv-static-vignette"></div>
+                    <div class="tv-static-text">NO SIGNAL 信号なし</div>
+                </div>
 
+                <!-- BIOS / POST Screen (realistic boot text) -->
+                <div id="bios-boot-screen" class="screen-content" aria-label="BIOS boot">
+                    <div class="bios-boot">
+                        <div class="bios-boot-header">PhoenixBIOS 4.0 Release 6.0</div>
+                        <pre id="bios-boot-text" class="bios-boot-text" aria-live="polite"></pre>
+                        <div class="bios-boot-footer">Press DEL to enter SETUP ・ Press F12 for Boot Menu</div>
+                    </div>
+                </div>
+
+                <!-- XP Boot Screen -->
+                <div id="xp-boot-screen" class="screen-content">
+                    <div class="xp-splash">
+                        <img src="image_paint/fullwindowsxplogo.png" alt="Windows XP" class="xp-splash-logo">
+                        <div class="xp-splash-bar" aria-hidden="true">
+                            <div class="xp-splash-indicator"></div>
+                        </div>
+                        <div class="xp-splash-footer">
+                            <span>Copyright © Microsoft Corporation</span>
+                            <span class="xp-splash-ms">Microsoft</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- XP Desktop -->
+                <div id="xp-desktop" class="screen-content">
+                    <div class="desktop-icons">
+                        <div class="desktop-icon" data-app="recycle-bin">
+                            <img src="image_paint/recycle-bin.png" alt="Recycle Bin"
+                                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect fill=%22%23888%22 width=%2248%22 height=%2248%22 rx=%224%22/><text x=%2224%22 y=%2232%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2220%22>🗑️</text></svg>'">
+                            <span>Recycle Bin<br>ごみ箱</span>
+                        </div>
+                        <div class="desktop-icon" data-app="paint" id="paint-icon">
+                            <img src="image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png"
+                                alt="Paint">
+                            <span>Paint.exe<br>ペイント</span>
+                        </div>
+                    </div>
+
+                    <!-- XP Taskbar -->
+                    <div class="xp-taskbar">
+                        <div class="xp-start-btn">
+                            <img src="image_paint/WindowsXP.png" alt="Start">
+                            <span>start</span>
+                        </div>
+                        <div class="xp-taskbar-items"></div>
+                        <div class="xp-system-tray">
+                            <span id="xp-clock">12:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Paint Window (initially hidden) -->
+                    <div id="paint-window-container" class="paint-window-wrapper hidden">
+                        <div class="paint-window">
+                            <div class="paint-titlebar">
+                                <span><img
+                                        src="image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png"
+                                        alt="Paint" class="titlebar-icon"> untitled - Paint ペイント</span>
+                                <div class="paint-titlebar-buttons">
+                                    <div class="paint-titlebar-btn minimize-btn">_</div>
+                                    <div class="paint-titlebar-btn maximize-btn">□</div>
+                                    <div class="paint-titlebar-btn close-btn" id="paint-close-btn">✕</div>
+                                </div>
+                            </div>
+                            <div class="paint-menubar">
+                                <span data-paint-tab="file"><u>F</u>ile</span>
+                                <span data-paint-tab="edit"><u>E</u>dit</span>
+                                <span data-paint-tab="background"><u>V</u>iew</span>
+                                <span data-paint-tab="stickers"><u>I</u>mage</span>
+                                <span data-paint-tab="colors"><u>C</u>olors</span>
+                                <span data-paint-tab="help"><u>H</u>elp</span>
+                                <button id="generate-cassette-btn" class="paint-create-btn" type="button"
+                                    aria-label="Create cassette">
+                                    <span class="paint-create-btn-main">CREATE</span>
+                                </button>
+                            </div>
+                            <div class="paint-body" id="paint-body">
+                                <div class="paint-toolbar" id="paint-toolbar">
+                                    <div class="paint-tool-section" id="paint-tool-colors">
+                                        <div class="paint-tool-section-title">背景色 BG</div>
+                                        <div class="paint-color-palette" id="color-palette"></div>
+                                    </div>
+                                    <div class="paint-tool-section" id="paint-tool-stickers">
+                                        <div class="paint-tool-section-title">ステッカー STICKERS</div>
+                                        <div class="paint-stickers-panel" id="stickers-panel"></div>
+                                    </div>
+                                    <button class="generate-art-btn" id="generate-art-btn">
+                                        <span class="btn-text">GENERATE ART<br>アート生成</span>
+                                    </button>
+                                </div>
+                                <div class="paint-canvas-container">
+                                    <canvas id="paint-canvas" width="360" height="100"></canvas>
+                                    <div id="stickers-layer"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
-    </div>
+
+            <!-- PC Image (transparent, sits above the screen) -->
+            <img class="pc-boot-image" src="image_paint/vektroid-pc-transparent.webp" alt="Retro PC" />
+
+            <!-- Boot button overlay (XP-ish power button) -->
+            <button id="pc-power-btn" class="pc-power-btn" aria-label="Power on PC">
+                <span class="power-btn-core" aria-hidden="true">
+                    <span class="power-btn-icon">⏻</span>
+                </span>
+                <span class="power-btn-label">POWER</span>
+                <span class="power-btn-hint">click to boot ・ 起動</span>
+            </button>
+
+            <!-- Cassette reader anchor -->
+            <div id="pc-cassette-reader" aria-hidden="true"></div>
+        </div>
+    </section>
 
     <!-- Single floating 3D cassette canvas (spawned by PC, follows scroll, inserts into player) -->
     <canvas id="floating-cassette-3d" hidden aria-hidden="true"></canvas>

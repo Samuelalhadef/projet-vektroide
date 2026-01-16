@@ -154,118 +154,344 @@
 })();
 
 /* ============================================
-           TV COLOR BARS + HORIZONTAL ALBUM SCROLL
+           PC SECTION - INTERACTIVE BOOT SEQUENCE
            ============================================ */
 (function () {
-  const wrapper = document.getElementById("tv-transition-wrapper");
-  const albumSlideContainer = document.getElementById("album-slide-container");
-  const pcBootLayer = document.getElementById("pc-boot-layer");
-  const pcBoot = document.getElementById("pc-boot");
+  const pcContainer = document.getElementById("pc-container");
+  const pcPowerBtn = document.getElementById("pc-power-btn");
+  const screenMask =
+    pcContainer && pcContainer.querySelector(".pc-screen-mask");
+  const pcSection = document.getElementById("pc-section");
+  const noSignalScreen = document.getElementById("no-signal-screen");
+  const biosBootScreen = document.getElementById("bios-boot-screen");
+  const biosBootText = document.getElementById("bios-boot-text");
+  const xpBootScreen = document.getElementById("xp-boot-screen");
+  const xpDesktop = document.getElementById("xp-desktop");
+  const paintIcon = document.getElementById("paint-icon");
+  const paintWindowContainer = document.getElementById(
+    "paint-window-container"
+  );
+  const paintCloseBtn = document.getElementById("paint-close-btn");
+  const xpClock = document.getElementById("xp-clock");
 
-  function readCssPxVar(el, varName, fallbackPx = 0) {
-    if (!el) return fallbackPx;
-    const raw = getComputedStyle(el).getPropertyValue(varName).trim();
-    if (!raw) return fallbackPx;
-    // Expect px values (e.g. "-60px"). If a number is provided, treat as px.
-    const n = parseFloat(raw);
-    return Number.isFinite(n) ? n : fallbackPx;
+  let isBooting = false;
+  let zoomAnchorScrollY = null;
+  let zoomStart = null;
+  let scrollingZoomDebounce = null;
+  let zoomRaf = 0;
+
+  if (!pcContainer || !pcPowerBtn) return;
+
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  const ZOOM_PADDING_PCT = 0.04; // tweak: smaller -> fills more of viewport
+  const ZOOM_MAX_SCALE = 12;
+  const ZOOM_SCROLL_RANGE_PX = 1100; // scroll distance to fully return to normal (bigger = less sensitive)
+  const BOOT_TIMINGS = {
+    screenPowerOnDelayMs: 160,
+    biosLineDelayMs: prefersReducedMotion ? 10 : 120,
+    biosDoneHoldMs: prefersReducedMotion ? 50 : 260,
+    splashDurationMs: prefersReducedMotion ? 150 : 2500,
+  };
+
+  const BIOS_LINES = [
+    "Copyright 1985-2003 Phoenix Technologies Ltd.",
+    "CPU = Intel(R) Pentium(R) 4 CPU 2.80GHz",
+    "Memory Test: 524288K OK",
+    "Detecting IDE Primary Master ... VEKTROID HDD",
+    "Detecting IDE Primary Slave  ... None",
+    "Detecting IDE Secondary Master ... CD-ROM",
+    "Detecting USB Devices ... 1 USB device(s) found",
+    "Verifying DMI Pool Data .............",
+    "Boot from CD: \u2014",
+  ];
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
   }
 
-  function updateAlbumPosition() {
-    if (!wrapper || !albumSlideContainer) return;
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
 
-    const wrapperRect = wrapper.getBoundingClientRect();
-    const wrapperTop = wrapperRect.top;
-    const wrapperHeight = wrapper.offsetHeight;
-    const viewportHeight = window.innerHeight;
+  function smoothstep(t) {
+    const x = clamp(t, 0, 1);
+    return x * x * (3 - 2 * x);
+  }
 
-    // Calculate scroll progress within the wrapper
-    // 0 = just entered, 1 = fully scrolled through
-    let progress = 0;
+  function setZoomVarsForViewport({ instant = false } = {}) {
+    if (!screenMask) return;
 
-    if (wrapperTop <= 0) {
-      // How far we've scrolled into the wrapper
-      const scrolledIntoWrapper = Math.abs(wrapperTop);
-      // Total scrollable distance (wrapper height minus one viewport)
-      const totalScrollDistance = wrapperHeight - viewportHeight;
+    const wasZoomed = pcContainer.classList.contains("pc-zoomed");
+    if (instant) pcContainer.classList.add("pc-zoomed--no-transition");
 
-      if (totalScrollDistance > 0) {
-        progress = Math.min(
-          1,
-          Math.max(0, scrolledIntoWrapper / totalScrollDistance)
-        );
-      }
+    // Measure unzoomed geometry for stable math.
+    pcContainer.classList.remove("pc-zoomed");
+
+    const containerRect = pcContainer.getBoundingClientRect();
+    const maskRect = screenMask.getBoundingClientRect();
+    if (maskRect.width <= 0 || maskRect.height <= 0) {
+      if (instant) pcContainer.classList.remove("pc-zoomed--no-transition");
+      if (wasZoomed) pcContainer.classList.add("pc-zoomed");
+      return;
     }
 
-    // Intro transition (0% -> 30%): PC off -> zoom into screen -> TV static
-    const introEnd = 0.3;
-    const introProgress = Math.min(1, Math.max(0, progress / introEnd));
+    const padding = Math.round(
+      Math.min(window.innerWidth, window.innerHeight) * ZOOM_PADDING_PCT
+    );
+    const targetW = Math.max(50, window.innerWidth - padding * 2);
+    const targetH = Math.max(50, window.innerHeight - padding * 2);
 
-    if (pcBootLayer && pcBoot) {
-      const forceZoomOut = pcBootLayer.classList.contains(
-        "is-force-zoomed-out"
+    const scale = clamp(
+      Math.min(targetW / maskRect.width, targetH / maskRect.height),
+      1,
+      ZOOM_MAX_SCALE
+    );
+
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+    const maskCenterX = maskRect.left + maskRect.width / 2;
+    const maskCenterY = maskRect.top + maskRect.height / 2;
+
+    const scaledMaskCenterX =
+      containerRect.left + (maskCenterX - containerRect.left) * scale;
+    const scaledMaskCenterY =
+      containerRect.top + (maskCenterY - containerRect.top) * scale;
+
+    const tx = viewportCenterX - scaledMaskCenterX;
+    const ty = viewportCenterY - scaledMaskCenterY;
+
+    pcContainer.style.setProperty("--pc-zoom-scale", scale.toFixed(4));
+    pcContainer.style.setProperty("--pc-zoom-tx", `${tx.toFixed(1)}px`);
+    pcContainer.style.setProperty("--pc-zoom-ty", `${ty.toFixed(1)}px`);
+
+    // Return numbers so callers can store a "zoom start" snapshot.
+    const result = { scale, tx, ty };
+
+    if (wasZoomed) pcContainer.classList.add("pc-zoomed");
+    if (instant) {
+      requestAnimationFrame(() =>
+        pcContainer.classList.remove("pc-zoomed--no-transition")
       );
-
-      if (forceZoomOut) {
-        // Override scroll-zoom so the PC stays centered and fully visible.
-        pcBoot.style.transform = "translate3d(0px, 0px, 0) scale(1)";
-        pcBootLayer.classList.add("is-screen-on");
-        pcBootLayer.classList.remove("is-screen-only");
-      } else {
-        // Baseline zoom. Fine-tune later by adjusting CSS vars.
-        const z = 1 + introProgress * 2.4;
-
-        // Configurable zoom target (offset the PC as we zoom).
-        // Negative Y focuses LOWER on the PC image (brings lower area toward center).
-        const fullOffsetX = readCssPxVar(pcBootLayer, "--pc-zoom-offset-x", 0);
-        const fullOffsetY = readCssPxVar(pcBootLayer, "--pc-zoom-offset-y", 0);
-        const tx = fullOffsetX * introProgress;
-        const ty = fullOffsetY * introProgress;
-
-        pcBoot.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
-
-        // No fading: just toggle "screen on" and "screen only" at thresholds.
-        pcBootLayer.classList.toggle("is-screen-on", introProgress >= 0.18);
-        pcBootLayer.classList.toggle("is-screen-only", introProgress >= 0.95);
-      }
     }
 
-    // Album slides from right (100%) to left (0%)
-    // Start sliding after 30% scroll progress, finish at 100%
-    let slideProgress = 0;
-    if (progress > 0.3) {
-      slideProgress = (progress - 0.3) / 0.7; // Normalize to 0-1
-      slideProgress = Math.min(1, slideProgress);
-    }
-
-    // Ease out cubic for smooth deceleration
-    const eased = 1 - Math.pow(1 - slideProgress, 3);
-
-    // Translate from 100% (off-screen right) to -100% (covers the color bars)
-    const translateX = 100 - eased * 200;
-
-    albumSlideContainer.style.transform = `translateX(${translateX}%)`;
+    return result;
   }
 
-  // Use requestAnimationFrame for smooth scrolling
-  let ticking = false;
-
-  window.addEventListener("scroll", () => {
-    if (!ticking) {
-      requestAnimationFrame(() => {
-        updateAlbumPosition();
-        ticking = false;
-      });
-      ticking = true;
+  function zoomToScreen() {
+    // Compute vars without animating the measurement step.
+    const computed = setZoomVarsForViewport({ instant: true });
+    if (computed) {
+      zoomStart = {
+        scale: computed.scale,
+        tx: computed.tx,
+        ty: computed.ty,
+        scrollY: window.scrollY,
+      };
     }
+    // Re-enable transitions for the actual zoom-in.
+    pcContainer.classList.remove("pc-zoomed--no-transition");
+    requestAnimationFrame(() => pcContainer.classList.add("pc-zoomed"));
+  }
+
+  function applyScrollZoom() {
+    // Only drive zoom when we're in the interactive (zoomable) state.
+    // Cassette ejection uses its own zoom-out logic.
+    if (pcContainer.classList.contains("cassette-ejecting")) return;
+    if (!pcContainer.classList.contains("pc-zoomed")) return;
+    if (!zoomStart) return;
+
+    // Distance scrolled away from the "zoom-in" moment.
+    const deltaY = window.scrollY - zoomStart.scrollY;
+    const t = clamp(Math.abs(deltaY) / ZOOM_SCROLL_RANGE_PX, 0, 1);
+    const eased = smoothstep(t);
+
+    // Keep the zoomed view stable while scrolling by compensating the scroll in Y.
+    // As we ease out, we also ease out that compensation so it returns to the normal flow.
+    const startTyWithScrollComp = zoomStart.ty + deltaY;
+
+    const nextScale = lerp(zoomStart.scale, 1, eased);
+    const nextTx = lerp(zoomStart.tx, 0, eased);
+    const nextTy = lerp(startTyWithScrollComp, 0, eased);
+
+    pcContainer.style.setProperty("--pc-zoom-scale", nextScale.toFixed(4));
+    pcContainer.style.setProperty("--pc-zoom-tx", `${nextTx.toFixed(1)}px`);
+    pcContainer.style.setProperty("--pc-zoom-ty", `${nextTy.toFixed(1)}px`);
+
+    pcContainer.classList.add("pc-zoomed--scrolling");
+    clearTimeout(scrollingZoomDebounce);
+    scrollingZoomDebounce = setTimeout(() => {
+      pcContainer.classList.remove("pc-zoomed--scrolling");
+    }, 140);
+
+    // IMPORTANT: do NOT remove the zoom state at t==1.
+    // Keeping it means scrolling back toward the anchor smoothly re-zooms in.
+  }
+
+  function runBiosTyping(onDone) {
+    if (!biosBootText) {
+      onDone && onDone();
+      return;
+    }
+    biosBootText.textContent = "";
+
+    let index = 0;
+    const next = () => {
+      if (index >= BIOS_LINES.length) {
+        onDone && onDone();
+        return;
+      }
+
+      const prefix = index === 0 ? "" : "\n";
+      biosBootText.textContent += prefix + BIOS_LINES[index];
+      index += 1;
+
+      const jitter = prefersReducedMotion ? 0 : Math.random() * 80;
+      setTimeout(next, BOOT_TIMINGS.biosLineDelayMs + jitter);
+    };
+
+    next();
+  }
+
+  // Update XP clock
+  function updateClock() {
+    if (!xpClock) return;
+    const now = new Date();
+    xpClock.textContent = now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Switch screen content
+  function showScreen(screenId) {
+    [noSignalScreen, biosBootScreen, xpBootScreen, xpDesktop].forEach(
+      (screen) => {
+        if (screen) screen.classList.remove("active");
+      }
+    );
+    const target = document.getElementById(screenId);
+    if (target) target.classList.add("active");
+  }
+
+  // PC boot sequence
+  pcPowerBtn.addEventListener("click", () => {
+    if (isBooting || pcContainer.classList.contains("pc-on")) return;
+    isBooting = true;
+
+    pcContainer.classList.remove("pc-off");
+    pcContainer.classList.add("pc-booting");
+
+    // Record where the user was when they zoomed in.
+    zoomAnchorScrollY = window.scrollY;
+
+    // Zoom so the PC screen fills the viewport (responsive)
+    zoomToScreen();
+    // Apply the scroll-zoom baseline immediately in case the user is already mid-scroll.
+    requestAnimationFrame(() => applyScrollZoom());
+
+    // Power on -> BIOS -> XP splash -> Desktop
+    setTimeout(() => {
+      showScreen("bios-boot-screen");
+      runBiosTyping(() => {
+        setTimeout(() => {
+          showScreen("xp-boot-screen");
+
+          setTimeout(() => {
+            showScreen("xp-desktop");
+            pcContainer.classList.remove("pc-booting");
+            pcContainer.classList.add("pc-on");
+            isBooting = false;
+          }, BOOT_TIMINGS.splashDurationMs);
+        }, BOOT_TIMINGS.biosDoneHoldMs);
+      });
+    }, BOOT_TIMINGS.screenPowerOnDelayMs);
   });
 
-  // Initial position
-  updateAlbumPosition();
+  // Paint icon click - open Paint
+  if (paintIcon) {
+    paintIcon.addEventListener("click", () => {
+      if (paintWindowContainer) {
+        paintWindowContainer.classList.remove("hidden");
+        paintWindowContainer.classList.add("visible");
+      }
+    });
 
-  // Handle resize
-  window.addEventListener("resize", updateAlbumPosition);
+    // Double-click also works
+    paintIcon.addEventListener("dblclick", () => {
+      if (paintWindowContainer) {
+        paintWindowContainer.classList.remove("hidden");
+        paintWindowContainer.classList.add("visible");
+      }
+    });
+  }
+
+  // Paint close button
+  if (paintCloseBtn) {
+    paintCloseBtn.addEventListener("click", () => {
+      if (paintWindowContainer) {
+        paintWindowContainer.classList.remove("visible");
+        paintWindowContainer.classList.add("hidden");
+      }
+    });
+  }
+
+  // Expose function to zoom out PC when cassette is created
+  window.zoomOutPC = function () {
+    pcContainer.classList.remove("pc-zoomed");
+    pcContainer.classList.add("pc-zoomed-out", "cassette-ejecting");
+    zoomAnchorScrollY = null;
+    zoomStart = null;
+    if (zoomRaf) {
+      cancelAnimationFrame(zoomRaf);
+      zoomRaf = 0;
+    }
+  };
+
+  // Gradual zoom-out: proportional to how far the user has scrolled since zoom-in.
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!pcContainer.classList.contains("pc-zoomed")) return;
+      if (!zoomStart) return;
+      if (zoomRaf) return;
+      zoomRaf = requestAnimationFrame(() => {
+        zoomRaf = 0;
+        applyScrollZoom();
+      });
+    },
+    { passive: true }
+  );
+
+  // Keep the zoom stable across resizes / different screen sizes.
+  window.addEventListener(
+    "resize",
+    () => {
+      if (!pcContainer.classList.contains("pc-zoomed")) return;
+      const computed = setZoomVarsForViewport({ instant: true });
+      if (computed) {
+        // Treat resize as updating the "zoom start" baseline so scroll zoom continues to feel stable.
+        zoomStart = {
+          scale: computed.scale,
+          tx: computed.tx,
+          ty: computed.ty,
+          scrollY: zoomStart ? zoomStart.scrollY : window.scrollY,
+        };
+      }
+    },
+    { passive: true }
+  );
 })();
+
+/* ============================================
+           PLACEHOLDER - OLD TV CODE REMOVED
+           ============================================ */
+// Old TV transition wrapper code removed - now using PC boot sequence above
 
 /* ============================================
            SCENE 1: HERO - VAPORWAVE GRID TERRAIN
@@ -784,16 +1010,21 @@
            ============================================ */
 (function () {
   const canvas = document.getElementById("paint-canvas");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
+  if (!ctx) return;
   const colorPalette = document.getElementById("color-palette");
   const stickersPanel = document.getElementById("stickers-panel");
   const stickersLayer = document.getElementById("stickers-layer");
-  const statusEl = document.getElementById("paint-status");
-  const coordsEl = document.getElementById("paint-coords");
   const generateArtBtn = document.getElementById("generate-art-btn");
+  const paintMenubar = document.querySelector(".paint-menubar");
+  const paintToolColors = document.getElementById("paint-tool-colors");
+  const paintToolStickers = document.getElementById("paint-tool-stickers");
 
   function setStatus(text) {
-    if (statusEl) statusEl.textContent = text;
+    // Statusbar removed; keep a lightweight signal for debugging.
+    // (No UI element to write to.)
+    if (typeof text === "string" && text) console.debug("[Paint]", text);
   }
 
   function clearSelection(selector) {
@@ -804,6 +1035,56 @@
 
   function setCursor(value) {
     if (canvas) canvas.style.cursor = value;
+  }
+
+  function setMenubarActive(tab) {
+    if (!paintMenubar) return;
+    paintMenubar
+      .querySelectorAll("[data-paint-tab]")
+      .forEach((el) =>
+        el.classList.toggle("is-active", el.dataset.paintTab === tab)
+      );
+  }
+
+  function showToolPanel(panel) {
+    // panel: 'colors' | 'stickers' | 'background'
+    if (paintToolColors) {
+      paintToolColors.style.display = panel === "colors" ? "flex" : "none";
+    }
+    if (paintToolStickers) {
+      paintToolStickers.style.display = panel === "stickers" ? "flex" : "none";
+    }
+    if (generateArtBtn) {
+      generateArtBtn.style.display =
+        panel === "background" ? "inline-flex" : "none";
+    }
+  }
+
+  function enterColorsMode() {
+    selectedSticker = null;
+    clearSelection(".paint-sticker");
+    setCursor("crosshair");
+    showToolPanel("colors");
+    setMenubarActive("colors");
+    setStatus("色ツール Colors (BG)\u3000クリックで背景色を変更");
+  }
+
+  function enterStickersMode() {
+    renderMode = "default";
+    renderCanvas();
+    showToolPanel("stickers");
+    setMenubarActive("stickers");
+    setCursor(selectedSticker ? "copy" : "crosshair");
+    setStatus("ステッカー Stickers\u3000選んでクリックで配置");
+  }
+
+  function enterBackgroundMode() {
+    selectedSticker = null;
+    clearSelection(".paint-sticker");
+    showToolPanel("background");
+    setMenubarActive("background");
+    setCursor("crosshair");
+    setStatus("背景アート Background\u3000GENERATE ART で生成");
   }
 
   // Color palette - vaporwave + classic Paint colors
@@ -886,11 +1167,27 @@
   let selectedSticker = null;
   let renderMode = "default";
 
+  const PAINT_CANVAS_CSS_W = 248;
+  const PAINT_CANVAS_CSS_H = 100;
+  const STICKER_SIZE_PX = 24;
+  const STICKER_HALF_PX = STICKER_SIZE_PX / 2;
+
   // Setup canvas size
   function resizeCanvas() {
     const container = canvas.parentElement;
-    canvas.width = container.clientWidth - 8;
-    canvas.height = 240;
+    if (!container) return;
+
+    // Fixed Paint canvas size (requested): 248x100 CSS pixels.
+    const cssW = PAINT_CANVAS_CSS_W;
+    const cssH = PAINT_CANVAS_CSS_H;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     renderCanvas();
   }
 
@@ -904,15 +1201,21 @@
 
   // Draw canvas with background and default text
   function renderDefaultCanvas() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+
     // Background
     ctx.fillStyle = currentBgColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, w, h);
 
     // Default Japanese text - Macintosh Plus Floral Shoppe
     // Text color: turquoise (#01cdfe) on dark backgrounds, dark on light backgrounds
     const textColor = isLightColor(currentBgColor) ? "#1a0a2e" : "#01cdfe";
     ctx.fillStyle = textColor;
-    ctx.font = 'bold 48px "Noto Sans JP", sans-serif';
+    const rootFontPx =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const fontPx = rootFontPx * 0.4;
+    ctx.font = `bold ${fontPx}px "Noto Sans JP", sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -920,22 +1223,14 @@
     ctx.shadowColor = isLightColor(currentBgColor)
       ? "rgba(255,255,255,0.5)"
       : "rgba(0,0,0,0.5)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = 1;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
 
     // マッキントッシュ・プラス = Macintosh Plus
     // フローラルの専門店 = Floral Shoppe
-    ctx.fillText(
-      "マッキントッシュ・プラス",
-      canvas.width / 2,
-      canvas.height / 2 - 30
-    );
-    ctx.fillText(
-      "フローラルの専門店",
-      canvas.width / 2,
-      canvas.height / 2 + 40
-    );
+    ctx.fillText("マッキントッシュ・プラス", w / 2, h / 2 - fontPx * 0.75);
+    ctx.fillText("フローラルの専門店", w / 2, h / 2 + fontPx * 0.85);
 
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
@@ -977,6 +1272,7 @@
   }
 
   function renderProceduralArt() {
+    // Use backing-store size for pixel art generation.
     const w = canvas.width;
     const h = canvas.height;
     const img = ctx.createImageData(w, h);
@@ -1034,6 +1330,10 @@
       colorDiv.classList.add("selected");
       currentBgColor = color;
 
+      // Switching background color is a "colors" action.
+      selectedSticker = null;
+      clearSelection(".paint-sticker");
+
       // Redraw canvas with new background and text
       renderMode = "default";
       renderCanvas();
@@ -1073,6 +1373,41 @@
       renderCanvas();
       setStatus("アート生成完了 Art generated!");
       setCursor("crosshair");
+    });
+  }
+
+  // Menubar interactions: use existing XP-ish menu labels as tool switches.
+  if (paintMenubar) {
+    paintMenubar.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-paint-tab]");
+      if (!item) return;
+
+      const tab = item.dataset.paintTab;
+      switch (tab) {
+        case "colors":
+          enterColorsMode();
+          break;
+        case "stickers":
+          enterStickersMode();
+          break;
+        case "background":
+          enterBackgroundMode();
+          break;
+        case "file":
+          setMenubarActive("file");
+          setStatus("File: セーブ機能はまだありません (demo)");
+          break;
+        case "edit":
+          setMenubarActive("edit");
+          setStatus("Edit: Ctrl+Z は未実装 (demo)");
+          break;
+        case "help":
+          setMenubarActive("help");
+          setStatus("Help: Colors / Image / View をクリック");
+          break;
+        default:
+          break;
+      }
     });
   }
 
@@ -1130,8 +1465,8 @@
     const img = document.createElement("img");
     img.src = selectedSticker.src;
     img.alt = selectedSticker.name;
-    img.style.width = "64px";
-    img.style.height = "64px";
+    img.style.width = STICKER_SIZE_PX + "px";
+    img.style.height = STICKER_SIZE_PX + "px";
     img.style.objectFit = "contain";
     img.draggable = false;
     stickerEl.appendChild(img);
@@ -1155,24 +1490,23 @@
     setStatus("ステッカー配置完了 Sticker placed!");
   });
 
-  // Track mouse position
-  canvas.addEventListener("mousemove", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.round(e.clientX - rect.left);
-    const y = Math.round(e.clientY - rect.top);
-    coordsEl.textContent = x + ", " + y;
-  });
-
   // Initialize
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
 
+  // Also re-measure whenever the canvas container changes size (open/close, layout shifts, etc.)
+  const containerEl = canvas.parentElement;
+  if (containerEl && "ResizeObserver" in window) {
+    const ro = new ResizeObserver(() => resizeCanvas());
+    ro.observe(containerEl);
+  }
+
+  // Default tool state
+  enterColorsMode();
+
   // Make stickers layer match canvas position
   stickersLayer.style.position = "absolute";
-  stickersLayer.style.top = "0";
-  stickersLayer.style.left = "0";
-  stickersLayer.style.width = "100%";
-  stickersLayer.style.height = "100%";
+  stickersLayer.style.inset = "4px";
   stickersLayer.style.pointerEvents = "none";
 
   // ============================================
@@ -1275,13 +1609,21 @@
     const tempCtx = tempCanvas.getContext("2d");
     tempCtx.drawImage(canvas, 0, 0);
 
+    const dpr = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+
     const stickerElements = stickersLayer.querySelectorAll(".canvas-sticker");
     stickerElements.forEach((stickerEl) => {
       const x = parseInt(stickerEl.style.left) || 0;
       const y = parseInt(stickerEl.style.top) || 0;
       const img = stickerEl.querySelector("img");
       if (img && img.complete) {
-        tempCtx.drawImage(img, x - 32, y - 32, 64, 64);
+        tempCtx.drawImage(
+          img,
+          (x - STICKER_HALF_PX) * dpr,
+          (y - STICKER_HALF_PX) * dpr,
+          STICKER_SIZE_PX * dpr,
+          STICKER_SIZE_PX * dpr
+        );
       }
     });
 
@@ -1548,41 +1890,36 @@
       created: false,
       inserted: false,
       inFlight: false,
-      fx: 0,
-      fy: 0,
-      rot: 0,
+      x: 0,
+      y: 0,
+      dragging: false,
       handlersReady: false,
     };
     return VEKTROID.cassetteState;
   }
 
-  function isTvSectionOnScreen() {
-    const tv = document.getElementById("tv-static-section");
-    if (!tv) return false;
-    const r = tv.getBoundingClientRect();
+  function isPcSectionOnScreen() {
+    const pc = document.getElementById("pc-section");
+    if (!pc) return false;
+    const r = pc.getBoundingClientRect();
     return r.bottom > 0 && r.top < window.innerHeight;
   }
 
   function positionFloatingCassette() {
     const state = getCassetteState();
-    if (!state.created || state.inserted) return;
+    if (!state.created || state.inserted || state.dragging) return;
 
     const cassetteEl = document.getElementById("floating-cassette-3d");
     if (!cassetteEl || cassetteEl.hidden) return;
 
-    const readerEl = document.getElementById("pc-cassette-reader");
-
-    if (isTvSectionOnScreen() && readerEl) {
-      const rr = readerEl.getBoundingClientRect();
-      cassetteEl.style.left = rr.left + rr.width / 2 + "px";
-      cassetteEl.style.top = rr.top + rr.height / 2 + "px";
-      resizeFloatingCassette3D();
-      return;
+    // Default position - sticky on screen
+    if (!state.x && !state.y) {
+      state.x = Math.round(window.innerWidth * 0.75);
+      state.y = Math.round(window.innerHeight * 0.5);
     }
 
-    // Once the PC section scrolls away, keep the cassette on-screen.
-    cassetteEl.style.left = Math.round(window.innerWidth * 0.72) + "px";
-    cassetteEl.style.top = Math.round(window.innerHeight * 0.62) + "px";
+    cassetteEl.style.left = state.x + "px";
+    cassetteEl.style.top = state.y + "px";
     resizeFloatingCassette3D();
   }
 
@@ -1591,30 +1928,119 @@
     if (state.handlersReady) return;
     state.handlersReady = true;
 
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        ticking = false;
-        positionFloatingCassette();
-      });
-    };
+    const cassetteEl = document.getElementById("floating-cassette-3d");
+    if (!cassetteEl) return;
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // Dragging functionality
+    cassetteEl.addEventListener("pointerdown", (e) => {
+      if (state.inserted) return;
+      state.dragging = true;
+      cassetteEl.classList.add("is-dragging");
+      cassetteEl.setPointerCapture(e.pointerId);
+
+      const rect = cassetteEl.getBoundingClientRect();
+      dragOffsetX = e.clientX - (rect.left + rect.width / 2);
+      dragOffsetY = e.clientY - (rect.top + rect.height / 2);
+      e.preventDefault();
+    });
+
+    cassetteEl.addEventListener("pointermove", (e) => {
+      if (!state.dragging || state.inserted) return;
+
+      state.x = e.clientX - dragOffsetX;
+      state.y = e.clientY - dragOffsetY;
+
+      cassetteEl.style.left = state.x + "px";
+      cassetteEl.style.top = state.y + "px";
+
+      // Check if over player section
+      checkPlayerDropZone(state.x, state.y);
+    });
+
+    cassetteEl.addEventListener("pointerup", (e) => {
+      if (!state.dragging) return;
+      state.dragging = false;
+      cassetteEl.classList.remove("is-dragging");
+      cassetteEl.releasePointerCapture(e.pointerId);
+
+      // Check if dropped on player
+      tryInsertCassette(state.x, state.y);
+    });
+
+    cassetteEl.addEventListener("pointercancel", () => {
+      state.dragging = false;
+      cassetteEl.classList.remove("is-dragging");
+    });
+
     window.addEventListener("resize", positionFloatingCassette);
   }
 
-  function forcePcZoomOut() {
-    const pcBootLayer = document.getElementById("pc-boot-layer");
-    pcBootLayer?.classList.add("is-force-zoomed-out");
+  function checkPlayerDropZone(x, y) {
+    const playerSection = document.getElementById("player-section");
+    if (!playerSection) return false;
 
-    // Trigger the transform immediately so the transition runs without needing a scroll event.
-    const pcBoot = document.getElementById("pc-boot");
-    if (pcBoot) {
-      requestAnimationFrame(() => {
-        pcBoot.style.transform = "translate3d(0px, 0px, 0) scale(1)";
-      });
+    const rect = playerSection.getBoundingClientRect();
+    const inZone =
+      y > rect.top && y < rect.bottom && x > rect.left && x < rect.right;
+
+    // Visual feedback - highlight drop zone
+    playerSection.classList.toggle("drop-active", inZone);
+    return inZone;
+  }
+
+  function tryInsertCassette(x, y) {
+    const playerSection = document.getElementById("player-section");
+    if (!playerSection) return;
+
+    playerSection.classList.remove("drop-active");
+
+    const rect = playerSection.getBoundingClientRect();
+    const inZone =
+      y > rect.top && y < rect.bottom && x > rect.left && x < rect.right;
+
+    if (inZone) {
+      insertCassetteIntoPlayer();
+    }
+  }
+
+  function insertCassetteIntoPlayer() {
+    const state = getCassetteState();
+    const cassetteEl = document.getElementById("floating-cassette-3d");
+
+    if (!cassetteEl || state.inserted) return;
+
+    state.inserted = true;
+    cassetteEl.classList.add("is-inserting");
+
+    // Animate to player center
+    const playerSection = document.getElementById("player-section");
+    if (playerSection) {
+      const rect = playerSection.getBoundingClientRect();
+      cassetteEl.style.left = rect.left + rect.width / 2 + "px";
+      cassetteEl.style.top = rect.top + rect.height / 2 + "px";
+      cassetteEl.style.transform = "translate(-50%, -50%) scale(0.3)";
+    }
+
+    // Hide after animation and trigger player insertion
+    setTimeout(() => {
+      cassetteEl.classList.remove("is-visible", "is-inserting");
+      cassetteEl.hidden = true;
+      floatStop();
+
+      // Trigger the player to insert the tape
+      if (window.VEKTROID && window.VEKTROID.insertGeneratedTape) {
+        window.VEKTROID.insertGeneratedTape();
+      }
+    }, 600);
+  }
+
+  function forcePcZoomOut() {
+    // Use the new zoomOutPC function
+    if (window.zoomOutPC) {
+      window.zoomOutPC();
     }
   }
 
@@ -1628,9 +2054,6 @@
   let floatRaf = 0;
   let floatIsRunning = false;
   let floatSpawn = null;
-  let floatDragging = false;
-  let floatPointerId = null;
-  let floatPrev = { x: 0, y: 0 };
   let floatRotVel = { x: 0, y: 0 };
 
   function getFloatingCassetteCanvas() {
@@ -1691,39 +2114,8 @@
     resizeFloatingCassette3D();
     window.addEventListener("resize", resizeFloatingCassette3D);
 
-    // Drag-to-rotate interaction
-    canvas.addEventListener("pointerdown", (e) => {
-      floatDragging = true;
-      floatPointerId = e.pointerId;
-      floatPrev = { x: e.clientX, y: e.clientY };
-      floatRotVel = { x: 0, y: 0 };
-      canvas.setPointerCapture(e.pointerId);
-    });
-
-    canvas.addEventListener("pointermove", (e) => {
-      if (!floatDragging || e.pointerId !== floatPointerId || !floatCassette)
-        return;
-      const dx = e.clientX - floatPrev.x;
-      const dy = e.clientY - floatPrev.y;
-      floatPrev = { x: e.clientX, y: e.clientY };
-
-      const s = 0.008;
-      floatCassette.rotation.y += dx * s;
-      floatCassette.rotation.x += dy * s;
-      floatCassette.rotation.x = Math.max(
-        -0.6,
-        Math.min(0.6, floatCassette.rotation.x)
-      );
-      floatRotVel = { x: dy * s, y: dx * s };
-    });
-
-    function endDrag(e) {
-      if (e.pointerId !== floatPointerId) return;
-      floatDragging = false;
-      floatPointerId = null;
-    }
-    canvas.addEventListener("pointerup", endDrag);
-    canvas.addEventListener("pointercancel", endDrag);
+    // Note: Drag-to-move is handled by ensureCassetteFollowHandlers
+    // The canvas just renders - dragging moves the entire canvas element
   }
 
   function floatStart() {
@@ -1761,13 +2153,11 @@
       floatCassette.userData.rightReel.rotation.y += 0.06;
     }
 
-    if (!floatDragging && floatCassette) {
-      // gentle idle + inertial spin
-      floatCassette.rotation.y += (floatRotVel.y || 0) * 0.92;
-      floatCassette.rotation.x += (floatRotVel.x || 0) * 0.92;
-      floatRotVel.y *= 0.92;
-      floatRotVel.x *= 0.92;
+    if (floatCassette) {
+      // Gentle idle floating animation
       floatCassette.position.y = Math.sin(t * 1.1) * 0.02;
+      // Slow auto-rotation for visual appeal
+      floatCassette.rotation.y += 0.003;
     }
 
     floatRenderer.render(floatScene, floatCamera);
@@ -1779,6 +2169,7 @@
     if (!canvas) return;
 
     ensureFloatingCassette3D();
+    ensureCassetteFollowHandlers();
     floatStart();
 
     if (floatCassette) {
@@ -1787,24 +2178,26 @@
       floatSpawn = { t0: performance.now(), d: 900, x0: -0.8, x1: 0.3 };
     }
 
+    // Position the cassette initially near the PC
+    const pcSection = document.getElementById("pc-section");
+    if (pcSection) {
+      const rect = pcSection.getBoundingClientRect();
+      state.x = rect.left + rect.width * 0.7;
+      state.y = rect.top + rect.height * 0.5;
+    } else {
+      state.x = window.innerWidth * 0.75;
+      state.y = window.innerHeight * 0.5;
+    }
+
     canvas.hidden = false;
-    canvas.classList.add("is-visible");
+    canvas.style.left = state.x + "px";
+    canvas.style.top = state.y + "px";
+    canvas.style.transform = "translate(-50%, -50%)";
 
-    // Start in the reader, then slide out.
-    state.fx = 0;
-    state.fy = 0;
-    state.rot = 0;
-    canvas.style.setProperty("--fc-x", state.fx + "px");
-    canvas.style.setProperty("--fc-y", state.fy + "px");
-    canvas.style.setProperty("--fc-rot", state.rot + "deg");
-
-    positionFloatingCassette();
-
+    // Show with animation
     requestAnimationFrame(() => {
-      state.fx = 90;
-      state.fy = -10;
-      canvas.style.setProperty("--fc-x", state.fx + "px");
-      canvas.style.setProperty("--fc-y", state.fy + "px");
+      canvas.classList.add("is-visible");
+      resizeFloatingCassette3D();
     });
   }
 
@@ -2884,60 +3277,47 @@
     }
 
     if (cassetteState.inserted || cassetteState.inFlight) return;
-    cassetteState.inFlight = true;
 
-    // Animate the floating cassette into the player area (single cassette; no duplicates).
+    // Hide the floating cassette if visible
     const floatingEl = document.getElementById("floating-cassette-3d");
     if (floatingEl && !floatingEl.hidden) {
-      const fr = floatingEl.getBoundingClientRect();
-      const fromX = fr.left + fr.width / 2;
-      const fromY = fr.top + fr.height / 2;
-
-      const pr = container.getBoundingClientRect();
-      const targetX = pr.left + pr.width * 0.52;
-      const targetY = pr.top + pr.height * 0.7;
-
-      const dx = targetX - fromX;
-      const dy = targetY - fromY;
-
-      cassetteState.fx = (cassetteState.fx || 0) + dx;
-      cassetteState.fy = (cassetteState.fy || 0) + dy;
-      cassetteState.rot = -18;
-
-      floatingEl.style.setProperty("--fc-x", cassetteState.fx + "px");
-      floatingEl.style.setProperty("--fc-y", cassetteState.fy + "px");
-      floatingEl.style.setProperty("--fc-rot", cassetteState.rot + "deg");
-
-      setTimeout(() => {
-        floatingEl.hidden = true;
-        floatingEl.classList.remove("is-visible");
-        floatingEl.style.setProperty("--fc-x", "0px");
-        floatingEl.style.setProperty("--fc-y", "0px");
-        floatingEl.style.setProperty("--fc-rot", "0deg");
-
-        // Stop rendering the floating cassette when hidden.
-        VEKTROID.stopFloatingCassette3D?.();
-
-        cassetteState.created = false;
-        cassetteState.inserted = true;
-        cassetteState.inFlight = false;
-
-        document
-          .getElementById("pc-boot-layer")
-          ?.classList.remove("is-force-zoomed-out");
-      }, 720);
-    } else {
-      cassetteState.created = false;
-      cassetteState.inserted = true;
-      cassetteState.inFlight = false;
-      document
-        .getElementById("pc-boot-layer")
-        ?.classList.remove("is-force-zoomed-out");
+      floatingEl.hidden = true;
+      floatingEl.classList.remove("is-visible");
+      VEKTROID.stopFloatingCassette3D?.();
     }
+
+    cassetteState.created = false;
+    cassetteState.inserted = true;
+    cassetteState.inFlight = false;
 
     // Ensure the tape label matches the generated cassette before inserting.
     setTapeLabel({ title: "" });
 
+    insertTapeAnimation();
+  });
+
+  // Expose function for drag-and-drop cassette insertion
+  VEKTROID.insertGeneratedTape = function () {
+    if (tapeInserted) return;
+
+    const cassetteState = VEKTROID.cassetteState;
+
+    if (!VEKTROID.generatedCassette?.ready || !cassetteState?.created) {
+      setStatus("NO CASSETTE\nPaintで先に生成してね", "#ff71ce");
+      return;
+    }
+
+    cassetteState.created = false;
+    cassetteState.inserted = true;
+    cassetteState.inFlight = false;
+
+    // Ensure the tape label matches the generated cassette before inserting.
+    setTapeLabel({ title: "" });
+
+    insertTapeAnimation();
+  };
+
+  function insertTapeAnimation() {
     // Only show the player tape once we start inserting.
     tapeGroup.visible = true;
 
@@ -2962,7 +3342,7 @@
     }
 
     requestAnimationFrame(step);
-  });
+  }
 
   // Start/stop loop based on visibility
   playerUpdateRunning();
@@ -2982,10 +3362,10 @@
            ============================================ */
 (function () {
   const navbar = document.querySelector(".xp-navbar");
-  const tvTransitionWrapper = document.getElementById("tv-transition-wrapper");
+  const pcSection = document.getElementById("pc-section");
   const playerSection = document.getElementById("player-section");
 
-  if (!navbar || !tvTransitionWrapper || !playerSection) return;
+  if (!navbar) return;
 
   let lastScrollY = window.scrollY;
   let isScrollingUp = false;
@@ -2995,18 +3375,23 @@
     isScrollingUp = currentScrollY < lastScrollY;
     lastScrollY = currentScrollY;
 
-    const tvRect = tvTransitionWrapper.getBoundingClientRect();
-    const playerRect = playerSection.getBoundingClientRect();
+    const pcRect = pcSection ? pcSection.getBoundingClientRect() : null;
+    const playerRect = playerSection
+      ? playerSection.getBoundingClientRect()
+      : null;
 
     // Always show navbar if scrolling up
     if (isScrollingUp) {
       navbar.classList.remove("navbar-hidden");
     }
-    // Hide navbar when tv-transition-wrapper (computer section) is in view and scrolling down
-    else if (tvRect.top <= 0 && tvRect.bottom > window.innerHeight * 0.3) {
-      // In computer section - hide navbar
+    // Hide navbar when PC section is in view and scrolling down
+    else if (
+      pcRect &&
+      pcRect.top <= 0 &&
+      pcRect.bottom > window.innerHeight * 0.3
+    ) {
       navbar.classList.add("navbar-hidden");
-    } else if (playerRect.top <= window.innerHeight * 0.5) {
+    } else if (playerRect && playerRect.top <= window.innerHeight * 0.5) {
       // Reached player section - show navbar
       navbar.classList.remove("navbar-hidden");
     }

@@ -533,7 +533,7 @@ section {
     4px 4px 10px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 20;
-  width: min(100%, 608px);
+  width: min(100%, 630px);
   margin: 28px auto 0;
   max-width: 608px;
 }
@@ -541,18 +541,23 @@ section {
 .paint-titlebar {
   background: linear-gradient(90deg, #000080, #1084d0);
   color: white;
-  padding: 4px 8px;
+  padding: 2px 4px;
   font-family: "VT323", monospace;
-  font-size: 1.1rem;
+  font-size: 0.4rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   user-select: none;
+
+  span {
+    display: flex;
+    align-items: center;
+  }
 }
 
 .titlebar-icon {
-  width: 16px;
-  height: 16px;
+  width: 8px;
+  height: 8px;
   vertical-align: middle;
   margin-right: 4px;
   image-rendering: pixelated;
@@ -564,13 +569,13 @@ section {
 }
 
 .paint-titlebar-btn {
-  width: 18px;
-  height: 18px;
+  width: 8px;
+  height: 8px;
   background: #c0c0c0;
   border: 2px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
-  font-size: 12px;
-  line-height: 12px;
+  font-size: 6px;
+  line-height: 6px;
   text-align: center;
   cursor: pointer;
   font-family: "VT323", monospace;
@@ -582,10 +587,13 @@ section {
 
 .paint-menubar {
   background: #c0c0c0;
-  padding: 2px 4px;
+  padding: 2px 2px;
   font-family: "VT323", monospace;
-  font-size: 0.95rem;
+  font-size: 0.4rem;
   border-bottom: 1px solid #808080;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .paint-menubar span {
@@ -594,29 +602,99 @@ section {
   color: #000;
 }
 
-.paint-menubar span:hover {
+/* Menubar CREATE button (small, special look) */
+.paint-create-btn {
+  margin-left: auto;
+  height: 12px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #000;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 113, 206, 0.95) 0%,
+    rgba(1, 205, 254, 0.95) 100%
+  );
+  color: #0d0221;
+  cursor: pointer;
+  font-family: "VT323", monospace;
+  font-size: 0.3rem;
+  line-height: 1;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 12px rgba(255, 113, 206, 0.35);
+  animation: paintCreatePulse 1.6s ease-in-out infinite;
+}
+
+.paint-create-btn:active {
+  border-color: #808080 #ffffff #ffffff #808080;
+  transform: translateY(1px);
+  animation: none;
+}
+
+.paint-create-btn-main {
+  font-weight: 700;
+}
+@keyframes paintCreatePulse {
+  0%,
+  100% {
+    filter: saturate(1);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 10px rgba(1, 205, 254, 0.25);
+  }
+  50% {
+    filter: saturate(1.2);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 0 18px rgba(255, 113, 206, 0.55);
+  }
+}
+
+.paint-menubar span.is-active:not(.paint-create-btn-main) {
   background: #000080;
   color: white;
 }
 
+.paint-menubar span:hover:not(.paint-create-btn-main) {
+  background: #000080;
+  color: white;
+}
+
+.paint-create-btn:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 113, 206, 0.98) 25%,
+    rgba(1, 205, 254, 0.98) 100%
+  );
+}
+
 .paint-toolbar {
   background: #c0c0c0;
-  padding: 4px;
+  padding: 2px;
   display: flex;
-  gap: 8px;
+  justify-content: center;
+  gap: 4px;
   border-bottom: 1px solid #808080;
   flex-wrap: wrap;
+}
+
+/* Scrollable content area (toolbar + canvas) */
+.paint-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .paint-tool-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .paint-tool-section-title {
   font-family: "VT323", monospace;
-  font-size: 0.8rem;
+  font-size: 0.4rem;
   color: #000;
   text-align: center;
 }
@@ -625,15 +703,15 @@ section {
   display: grid;
   grid-template-columns: repeat(14, 16px);
   gap: 1px;
-  padding: 4px;
+  padding: 2px;
   background: #808080;
-  border: 2px solid;
+  border: 1px solid;
   border-color: #808080 #ffffff #ffffff #808080;
 }
 
 .paint-color {
-  width: 16px;
-  height: 16px;
+  width: 4px;
+  height: 4px;
   cursor: pointer;
   border: 1px solid #000;
 }
@@ -649,20 +727,20 @@ section {
 
 .paint-stickers-panel {
   display: flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 2px;
+  padding: 2px;
   background: #c0c0c0;
-  border: 2px solid;
+  border: 1px solid;
   border-color: #808080 #ffffff #ffffff #808080;
   flex-wrap: wrap;
   max-width: 300px;
 }
 
 .paint-sticker {
-  width: 40px;
-  height: 40px;
+  width: 12px;
+  height: 12px;
   background: transparent;
-  border: 2px solid;
+  border: 1px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
   cursor: pointer;
   display: flex;
@@ -690,27 +768,29 @@ section {
   border-color: #808080 #ffffff #ffffff #808080;
   overflow: hidden;
   position: relative;
+  width: 260px;
+  height: 108px;
+  min-height: 108px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Stickers layer should cover the same area as the canvas (inside padding). */
+#stickers-layer {
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
 }
 
 #paint-canvas {
   display: block;
-  width: 100%;
-  height: 192px;
+  width: 260px;
+  height: 100px;
   cursor: crosshair;
   image-rendering: pixelated;
 }
 
-.paint-statusbar {
-  background: #c0c0c0;
-  padding: 4px 8px;
-  font-family: "VT323", monospace;
-  font-size: 0.85rem;
-  color: #000;
-  border-top: 2px solid;
-  border-color: #808080 #ffffff #ffffff #808080;
-  display: flex;
-  justify-content: space-between;
-}
+/* (Paint statusbar removed) */
 
 /* Stickers on canvas */
 .canvas-sticker {
@@ -803,6 +883,10 @@ section {
 .generate-art-btn {
   background: linear-gradient(180deg, #d6d6ff 0%, #a9b0ff 100%);
   color: #090019;
+  padding: 4px 6px;
+  min-width: 64px;
+  gap: 2px;
+  font-size: 0.5rem;
 }
 
 .generate-art-btn:hover {
@@ -1016,6 +1100,37 @@ section {
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: box-shadow 0.3s ease;
+}
+
+#player-section.drop-active {
+  box-shadow: inset 0 0 100px rgba(1, 205, 254, 0.3),
+    inset 0 0 200px rgba(255, 113, 206, 0.2);
+}
+
+#player-section.drop-active::before {
+  content: "DROP CASSETTE HERE // カセットをここにドロップ";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "VT323", monospace;
+  font-size: 2rem;
+  color: var(--vapor-cyan);
+  text-shadow: 0 0 20px var(--vapor-cyan);
+  z-index: 20;
+  pointer-events: none;
+  animation: dropTextPulse 1s ease-in-out infinite;
+}
+
+@keyframes dropTextPulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 #player-canvas {
@@ -1166,122 +1281,551 @@ button:focus {
 }
 
 /* ============================================
-           TV COLOR BARS TRANSITION SECTION
+           PC SECTION - INTERACTIVE DESKTOP
            ============================================ */
-#tv-transition-wrapper {
+#pc-section {
   position: relative;
-  height: 300vh; /* Extra height for scroll animation */
-}
-
-#tv-static-section {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
+  min-height: 180vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 68px;
   overflow: hidden;
-  /* Cleaner overall background (no extra pseudo-element glows) */
   background: radial-gradient(
-      circle at 50% 25%,
-      rgba(185, 103, 255, 0.18) 0%,
-      rgba(1, 205, 254, 0.08) 22%,
-      rgba(0, 0, 0, 0.92) 62%,
-      #000 100%
-    ),
-    linear-gradient(180deg, #070015 0%, #000 100%);
-  z-index: 10;
+    circle at 50% 40%,
+    rgba(185, 103, 255, 0.15) 0%,
+    rgba(1, 205, 254, 0.08) 25%,
+    rgba(0, 0, 0, 0.95) 60%,
+    #000 100%
+  );
 }
 
-/* PC arrival/boot layer (baseline; you can fine-tune via vars) */
-#pc-boot-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
+#pc-container {
+  position: relative;
+  width: min(90vw, 800px);
+  max-width: 800px;
+  aspect-ratio: 4 / 3;
   display: grid;
   place-items: center;
-  background: transparent;
-  opacity: 1;
-  will-change: transform;
-  overflow: hidden;
+  transform-origin: center center;
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 5;
 
+  /* JS-driven zoom-to-screen variables */
+  --pc-zoom-scale: 1;
+  --pc-zoom-tx: 0px;
+  --pc-zoom-ty: 0px;
+
+  /* Screen position variables */
   --pc-screen-x: 50%;
-  --pc-screen-y: 38%;
-  --pc-screen-w: 37%;
-  --pc-screen-h: 48%;
-  --pc-screen-radius: 20px;
+  --pc-screen-y: 28%;
+  --pc-screen-w: 36.5%;
+  --pc-screen-h: 31%;
+  --pc-screen-radius: 12px;
 
-  /* Zoom target offsets (read by JS). Negative Y focuses LOWER on the PC. */
-  --pc-zoom-offset-x: 0px;
-  --pc-zoom-offset-y: 440px;
+  /* Power button placement (tweak these to align with the PC photo) */
+  --pc-power-x: 67.5%;
+  --pc-power-y: 48%;
+  --pc-power-size: 36px;
 
-  /* Desktop scaling inside the PC screen (1 = full size). */
-  --pc-desktop-scale: 0.34;
-
-  /* Cassette reader anchor (fine-tune these) */
+  /* Cassette reader anchor */
   --pc-reader-x: 68%;
   --pc-reader-y: 78%;
   --pc-reader-w: 16%;
   --pc-reader-h: 6%;
-
-  /* Start the PC lower in the section (applies before zoom overrides) */
-  --pc-start-lower: clamp(40px, 8vh, 140px);
 }
 
-#pc-boot {
-  position: relative;
-  --pc-max-w: min(95vw, 980px);
-  --pc-max-h: 90vh;
-  /* Keep a stable 4:3 box that never exceeds either constraint */
-  --pc-fit-h: min(var(--pc-max-h), calc(var(--pc-max-w) * 0.7));
-  height: var(--pc-fit-h);
-  width: min(var(--pc-max-w), calc(var(--pc-fit-h) * 1.5));
+#pc-container.pc-zoomed {
+  /* Transform origin 0,0 makes zoom math stable across resizes */
+  transform-origin: 0 0;
+  transform: translate3d(var(--pc-zoom-tx), var(--pc-zoom-ty), 0)
+    scale(var(--pc-zoom-scale));
+}
+
+/* When scroll is driving the zoom variables, keep it responsive (no big easing lag). */
+#pc-container.pc-zoomed.pc-zoomed--scrolling {
+  transition: transform 120ms linear;
+}
+
+#pc-container.pc-zoomed--no-transition {
+  transition: none !important;
+}
+
+#pc-container.pc-zoomed-out {
+  transform: none;
+}
+
+/* PC Boot image */
+.pc-boot-image {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Above the screen so transparency reveals content */
+  z-index: 6;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 0 60px rgba(1, 205, 254, 0.15))
+    drop-shadow(0 0 30px rgba(185, 103, 255, 0.1));
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Power button overlay */
+.pc-power-btn {
+  position: absolute;
+  left: var(--pc-power-x);
+  top: var(--pc-power-y);
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  width: var(--pc-power-size);
+  height: var(--pc-power-size);
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  /* Zoom tuning knobs (JS uses offsets; origin is pure CSS) */
-  --pc-zoom-origin-x: 50%;
-  --pc-zoom-origin-y: 50%;
-  transform-origin: var(--pc-zoom-origin-x) var(--pc-zoom-origin-y);
-  will-change: transform;
-  transition: none;
-  justify-self: center;
-  align-self: center;
-  margin-top: var(--pc-start-lower);
-}
-
-/* Only animate when we force a zoom-out (so scroll-driven transforms stay crisp) */
-#pc-boot-layer.is-force-zoomed-out #pc-boot {
-  transition: transform 720ms cubic-bezier(0.2, 0.95, 0.2, 1);
-}
-
-/* Screen starts "off" (black). JS toggles .is-screen-on (no fading). */
-.pc-screen-off {
-  position: absolute;
-  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.35);
   background: radial-gradient(
-    circle at 50% 40%,
-    rgba(20, 20, 20, 0.95) 0%,
-    rgba(0, 0, 0, 1) 70%
+    circle at 35% 30%,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.06) 32%,
+    rgba(0, 0, 0, 0.72) 70%,
+    rgba(0, 0, 0, 0.9) 100%
   );
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
-  z-index: 20;
+  box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.16),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.55), 0 16px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(1, 205, 254, 0.25), 0 0 40px rgba(1, 205, 254, 0.22);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 240ms ease, filter 240ms ease;
+  font-family: Tahoma, sans-serif;
+  color: #fff;
+  filter: saturate(1.15);
+  user-select: none;
 }
 
-#pc-boot-layer.is-screen-on .pc-screen-off {
+.pc-power-btn:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.18),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.55), 0 18px 38px rgba(0, 0, 0, 0.7),
+    0 0 0 3px rgba(255, 113, 206, 0.32), 0 0 55px rgba(255, 113, 206, 0.25);
+}
+
+.pc-power-btn::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(1, 205, 254, 0.18) 0%,
+    rgba(185, 103, 255, 0.12) 38%,
+    transparent 72%
+  );
+  opacity: 0.85;
+  filter: blur(0.2px);
+  animation: pcPowerPulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pcPowerPulse {
+  0%,
+  100% {
+    transform: scale(0.98);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.pc-power-btn .power-btn-core {
+  width: calc(var(--pc-power-size) * 0.66);
+  height: calc(var(--pc-power-size) * 0.66);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    180deg,
+    rgba(35, 35, 35, 0.95),
+    rgba(0, 0, 0, 0.85)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -10px 16px rgba(0, 0, 0, 0.55);
+}
+
+.pc-power-btn .power-btn-icon {
+  font-size: 18px;
+  color: var(--vapor-cyan);
+  text-shadow: 0 0 18px rgba(1, 205, 254, 0.85);
+  transform: translateY(-4px);
+}
+
+.pc-power-btn:hover .power-btn-icon {
+  color: var(--vapor-pink);
+  text-shadow: 0 0 18px rgba(255, 113, 206, 0.8);
+}
+
+.pc-power-btn .power-btn-label {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.95);
+}
+
+.pc-power-btn .power-btn-hint {
+  position: absolute;
+  top: calc(100% + 26px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.75);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
+#pc-container.pc-booting .pc-power-btn,
+#pc-container.pc-on .pc-power-btn {
   display: none;
 }
 
-/* When fully zoomed, hide the PC body and keep only screen outline + bars */
-#pc-boot-layer.is-screen-only {
-  background: transparent;
+/* Screen mask */
+.pc-screen-mask {
+  position: absolute;
+  left: var(--pc-screen-x);
+  top: var(--pc-screen-y);
+  width: var(--pc-screen-w);
+  height: var(--pc-screen-h);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border-radius: var(--pc-screen-radius);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 10px 40px rgba(0, 0, 0, 0.55),
+    inset 0 0 40px rgba(0, 0, 0, 0.4);
+  background: #020007;
+  /* Behind the transparent PC image */
+  z-index: 2;
+  pointer-events: auto;
+  isolation: isolate;
 }
 
-#pc-boot-layer.is-screen-only .pc-screen-mask {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28),
-    0 0 40px rgba(1, 205, 254, 0.22), 0 0 40px rgba(255, 113, 206, 0.16);
+/* Screen content layers */
+.screen-content {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
-/* ============================================
-           CRT FILTER EFFECT (OLD MONITOR)
-           ============================================ */
+.screen-content.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* No Signal Screen */
+#no-signal-screen {
+  background: #000;
+}
+
+/* XP Boot Screen */
+#xp-boot-screen {
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* BIOS / POST */
+#bios-boot-screen {
+  background: #000;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: "Lucida Console", "Courier New", monospace;
+}
+
+.bios-boot {
+  position: absolute;
+  inset: 0;
+  padding: clamp(6px, 0.9vw, 10px);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+}
+
+.bios-boot-header,
+.bios-boot-footer {
+  font-size: clamp(6px, 0.9vw, 9px);
+  opacity: 0.95;
+}
+
+.bios-boot-text {
+  margin: 0;
+  font-size: clamp(6px, 0.9vw, 9px);
+  line-height: 1.2;
+  white-space: pre-wrap;
+  color: rgba(199, 255, 199, 0.95);
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.06);
+}
+
+/* XP splash */
+.xp-splash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  align-items: end;
+  justify-items: center;
+  padding: 10% 10% 9% 10%;
+}
+
+.xp-splash-logo {
+  align-self: center;
+  width: clamp(160px, 42%, 340px);
+  max-width: 100%;
+  height: auto;
+  image-rendering: auto;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
+}
+
+.xp-splash-bar {
+  width: clamp(160px, 56%, 320px);
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  margin-top: 12px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.xp-splash-indicator {
+  width: 34%;
+  height: 100%;
+  background: linear-gradient(90deg, #0b4b1f 0%, #22b455 50%, #0b4b1f 100%);
+  background-size: 48px 100%;
+  animation: xpSplashSlide 1.15s linear infinite;
+}
+
+@keyframes xpSplashSlide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.xp-splash-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-family: Tahoma, sans-serif;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.68);
+  letter-spacing: 0.2px;
+  margin-top: 14px;
+}
+
+.xp-splash-ms {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 700;
+}
+
+/* XP Desktop */
+#xp-desktop {
+  background: linear-gradient(180deg, #245edb 0%, #3a7bd5 50%, #1e3a6e 100%);
+  display: flex;
+  flex-direction: column;
+  --xp-taskbar-h: 22px;
+}
+
+.desktop-icons {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.desktop-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.desktop-icon:active,
+.desktop-icon.selected {
+  background: rgba(0, 100, 200, 0.5);
+}
+
+.desktop-icon img {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  margin-bottom: 2px;
+}
+
+.desktop-icon span {
+  font-family: Tahoma, sans-serif;
+  font-size: 7.5px;
+  color: white;
+  text-align: center;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
+}
+
+/* XP Taskbar */
+.xp-taskbar {
+  height: var(--xp-taskbar-h);
+  background: linear-gradient(180deg, #245edb 0%, #1941a5 100%);
+  border-top: 1px solid #3a7bd5;
+  display: flex;
+  align-items: center;
+  padding: 12px 8px 15px 2px;
+}
+
+.xp-start-btn {
+  height: 18px;
+  background: linear-gradient(180deg, #3eae36 0%, #37952f 100%);
+  border-radius: 0 10px 10px 0;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: Tahoma, sans-serif;
+  font-size: 8px;
+  font-weight: bold;
+  font-style: italic;
+  color: white;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.xp-start-btn img {
+  width: 12px;
+  height: 12px;
+}
+
+.xp-taskbar-items {
+  flex: 1;
+}
+
+.xp-system-tray {
+  font-family: Tahoma, sans-serif;
+  font-size: 8px;
+  color: white;
+  padding: 0 5px;
+  background: linear-gradient(180deg, #1a8cd8 0%, #0b5fa5 100%);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Paint Window in Desktop */
+.paint-window-wrapper {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  padding-bottom: var(--xp-taskbar-h);
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  transform: scale(0.92);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease;
+}
+
+.paint-window-wrapper.hidden {
+  transform: scale(0.86);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.paint-window-wrapper.visible {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.paint-window-wrapper .paint-window {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+  max-width: none;
+}
+
+.paint-window-wrapper .paint-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* When Paint is inside the PC screen, make its UI denser so it fits */
+.paint-window-wrapper .paint-titlebar {
+  font-size: 0.5rem;
+  padding: 2px 4px;
+}
+
+.paint-window-wrapper .paint-titlebar-btn {
+  width: 8px;
+  height: 8px;
+  font-size: 6px;
+  line-height: 6px;
+}
+
+.paint-window-wrapper .paint-menubar {
+  font-size: 0.4rem;
+  padding: 2px 2px;
+}
+
+.paint-window-wrapper .paint-toolbar {
+  padding: 2px;
+  gap: 4px;
+}
+
+.paint-window-wrapper .paint-color-palette {
+  grid-template-columns: repeat(14, 12px);
+}
+
+.paint-window-wrapper .paint-color {
+  width: 12px;
+  height: 12px;
+}
+
+.paint-window-wrapper .paint-sticker {
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+}
+
+.paint-window-wrapper #paint-canvas {
+  display: block;
+}
+
+/* CRT Filter */
 .crt-filter {
   position: absolute;
   top: 0;
@@ -1294,13 +1838,9 @@ button:focus {
   overflow: hidden;
 }
 
-/* Scanlines */
 .crt-scanlines {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: repeating-linear-gradient(
     0deg,
     rgba(0, 0, 0, 0.15) 0px,
@@ -1312,26 +1852,18 @@ button:focus {
   z-index: 101;
 }
 
-/* Phosphor glow effect */
 .crt-glow {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   box-shadow: inset 0 0 60px rgba(0, 255, 0, 0.03),
     inset 0 0 30px rgba(255, 255, 255, 0.02);
   pointer-events: none;
   z-index: 102;
 }
 
-/* Flicker effect - CRT screen flicker */
 .crt-flicker {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(18, 16, 16, 0);
   pointer-events: none;
   z-index: 103;
@@ -1342,85 +1874,52 @@ button:focus {
   0% {
     opacity: 0.27861;
   }
-  5% {
+  10% {
     opacity: 0.34769;
   }
-  10% {
-    opacity: 0.23604;
-  }
-  15% {
-    opacity: 0.90626;
-  }
   20% {
-    opacity: 0.18128;
-  }
-  25% {
-    opacity: 0.83891;
+    opacity: 0.23604;
   }
   30% {
     opacity: 0.65583;
   }
-  35% {
-    opacity: 0.67807;
-  }
   40% {
     opacity: 0.26559;
   }
-  45% {
-    opacity: 0.84693;
-  }
   50% {
-    opacity: 0.96019;
-  }
-  55% {
-    opacity: 0.08594;
+    opacity: 0.84693;
   }
   60% {
     opacity: 0.20313;
   }
-  65% {
-    opacity: 0.71988;
-  }
   70% {
     opacity: 0.53455;
-  }
-  75% {
-    opacity: 0.37288;
   }
   80% {
     opacity: 0.71428;
   }
-  85% {
-    opacity: 0.70419;
-  }
   90% {
     opacity: 0.7003;
-  }
-  95% {
-    opacity: 0.36108;
   }
   100% {
     opacity: 0.24387;
   }
 }
 
-@keyframes screenPulse {
-  0%,
-  100% {
-    filter: saturate(1.1) contrast(1.08) brightness(0.95);
-  }
-  25% {
-    filter: saturate(1.1) contrast(1.08) brightness(0.92);
-  }
-  50% {
-    filter: saturate(1.15) contrast(1.1) brightness(1);
-  }
-  75% {
-    filter: saturate(1.08) contrast(1.05) brightness(0.93);
-  }
+.crt-rgb-shift {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 104;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.02) 0%,
+    transparent 10%,
+    transparent 90%,
+    rgba(0, 255, 255, 0.02) 100%
+  );
 }
 
-/* Horizontal interference line */
 .crt-filter::before {
   content: "";
   position: absolute;
@@ -1443,49 +1942,101 @@ button:focus {
   }
 }
 
-/* RGB shift / chromatic aberration */
-.crt-rgb-shift {
+/* TV Color Bars */
+.tv-color-bars {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  display: flex;
   pointer-events: none;
-  z-index: 104;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 0, 0, 0.02) 0%,
-    transparent 10%,
-    transparent 90%,
-    rgba(0, 255, 255, 0.02) 100%
-  );
 }
 
-/* Screen curvature effect */
-.pc-screen-mask {
+.tv-color-bar {
+  flex: 1;
+  height: 100%;
+}
+
+.tv-color-bar:nth-child(1) {
+  background: #ffffff;
+}
+.tv-color-bar:nth-child(2) {
+  background: #ffff00;
+}
+.tv-color-bar:nth-child(3) {
+  background: #00ffff;
+}
+.tv-color-bar:nth-child(4) {
+  background: #00ff00;
+}
+.tv-color-bar:nth-child(5) {
+  background: #ff00ff;
+}
+.tv-color-bar:nth-child(6) {
+  background: #ff0000;
+}
+.tv-color-bar:nth-child(7) {
+  background: #0000ff;
+}
+.tv-color-bar:nth-child(8) {
+  background: #000000;
+}
+
+.tv-static-overlay {
   position: absolute;
-  left: var(--pc-screen-x);
-  top: var(--pc-screen-y);
-  width: var(--pc-screen-w);
-  height: var(--pc-screen-h);
-  transform: translate(-50%, -50%);
-  overflow: hidden;
-  border-radius: var(--pc-screen-radius);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 18px 60px rgba(0, 0, 0, 0.55),
-    inset 0 0 60px rgba(0, 0, 0, 0.42);
-  filter: saturate(1.1) contrast(1.08) brightness(0.95);
-  pointer-events: auto;
-  isolation: isolate;
-  background: #020007;
-  z-index: 1;
-  animation: screenPulse 4s ease-in-out infinite;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  pointer-events: none;
+  z-index: 2;
 }
 
-/* Remove the heavy glow pseudo-elements (requested) */
-#pc-boot-layer::before,
-#pc-boot-layer::after {
-  content: none !important;
-  display: none !important;
+.tv-static-vignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tv-static-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "VT323", monospace;
+  font-size: 1.2rem;
+  color: white;
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+  z-index: 4;
+  opacity: 0.9;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Cassette reader */
+#pc-cassette-reader {
+  position: absolute;
+  left: var(--pc-reader-x);
+  top: var(--pc-reader-y);
+  width: var(--pc-reader-w);
+  height: var(--pc-reader-h);
+  transform: translate(-50%, -50%);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    0 12px 28px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity 260ms ease;
+}
+
+#pc-container.cassette-ejecting #pc-cassette-reader {
+  opacity: 1;
 }
 
 /* ============================================
@@ -1495,13 +2046,11 @@ button:focus {
   position: absolute;
   bottom: 0;
   left: 50%;
-  /* Wider FOV perspective for a clearer checkerboard */
   transform: translateX(-50%) perspective(320px) rotateX(50deg) translateY(18vh)
     scale(1.35);
   width: 420%;
   height: 130%;
   overflow: hidden;
-  /* True black & white checkerboard */
   background-color: #000;
   background-image: linear-gradient(
       45deg,
@@ -1523,9 +2072,7 @@ button:focus {
   background-position: 0 0, 90px 90px;
   z-index: 0;
   transform-origin: center bottom;
-  /* Move "forward" (toward the camera) */
   animation: floorMoveForward 2.3s linear infinite;
-  /* Gradual fade from bottom to top - fades out much further back */
   mask-image: linear-gradient(
     to top,
     rgba(0, 0, 0, 1) 0%,
@@ -1548,7 +2095,6 @@ button:focus {
     rgba(0, 0, 0, 0.05) 85%,
     rgba(0, 0, 0, 0) 100%
   );
-  /* Add reflective shine effect */
   filter: brightness(1.35) contrast(1.2);
   isolation: isolate;
 }
@@ -1562,7 +2108,6 @@ button:focus {
   }
 }
 
-/* Big specular light source sweep */
 .vaporwave-floor::after {
   content: "";
   position: absolute;
@@ -1591,13 +2136,9 @@ button:focus {
   }
 }
 
-/* Reflection/shine effect */
 .floor-reflection {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: linear-gradient(
     to bottom,
     transparent 0%,
@@ -1622,7 +2163,6 @@ button:focus {
   }
 }
 
-/* Checkerboard stars that skim and reflect on the floor */
 .floor-stars {
   position: absolute;
   inset: 0;
@@ -1693,214 +2233,37 @@ button:focus {
   }
 }
 
-/* (intentionally removed glossy streaks) */
-
-/* Light reflection on the PC body */
-.pc-boot-image {
-  position: relative;
-  z-index: 3;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.75))
-    drop-shadow(0 -20px 60px rgba(1, 205, 254, 0.15))
-    drop-shadow(0 0 30px rgba(185, 103, 255, 0.1));
-  user-select: none;
-  pointer-events: none;
-}
-
-/* Cassette reader anchor (positioned over the PC image; shown when zoomed out) */
-#pc-cassette-reader {
-  position: absolute;
-  left: var(--pc-reader-x);
-  top: var(--pc-reader-y);
-  width: var(--pc-reader-w);
-  height: var(--pc-reader-h);
-  transform: translate(-50%, -50%);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.22);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06),
-    0 12px 28px rgba(0, 0, 0, 0.55);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 4;
-  transition: opacity 260ms ease;
-}
-
-#pc-boot-layer.is-force-zoomed-out #pc-cassette-reader {
-  opacity: 1;
-}
-
-/* Floating 3D cassette (single instance, follows scroll, inserts into player) */
+/* Floating 3D cassette - draggable sticky cassette */
 #floating-cassette-3d {
   position: fixed;
-  left: 50vw;
-  top: 50vh;
-  width: 220px;
-  height: 160px;
-  transform: translate(-50%, -50%)
-    translate3d(var(--fc-x, 0px), var(--fc-y, 0px), 0)
-    rotate(var(--fc-rot, 0deg));
+  width: 280px;
+  height: 200px;
   opacity: 0;
   z-index: 15000;
-  pointer-events: auto;
+  pointer-events: none;
   filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.55));
-  transition: opacity 240ms ease,
-    transform 900ms cubic-bezier(0.2, 0.95, 0.2, 1);
+  transition: opacity 400ms ease;
+  cursor: grab;
 }
 
 #floating-cassette-3d.is-visible {
   opacity: 1;
+  pointer-events: auto;
+}
+
+#floating-cassette-3d.is-dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.7));
+  transition: none;
+}
+
+#floating-cassette-3d.is-inserting {
+  pointer-events: none;
+  transition: all 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {
   #floating-cassette-3d {
-    transition: none;
+    transition: opacity 200ms ease;
   }
-}
-
-/* Remove extra screen pseudo overlays (requested) */
-.pc-screen-mask::before,
-.pc-screen-mask::after {
-  content: none !important;
-  display: none !important;
-}
-
-.tv-color-bars {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  pointer-events: none;
-}
-
-.tv-color-bar {
-  flex: 1;
-  height: 100%;
-}
-
-.tv-color-bar:nth-child(1) {
-  background: #ffffff;
-}
-.tv-color-bar:nth-child(2) {
-  background: #ffff00;
-}
-.tv-color-bar:nth-child(3) {
-  background: #00ffff;
-}
-.tv-color-bar:nth-child(4) {
-  background: #00ff00;
-}
-.tv-color-bar:nth-child(5) {
-  background: #ff00ff;
-}
-.tv-color-bar:nth-child(6) {
-  background: #ff0000;
-}
-.tv-color-bar:nth-child(7) {
-  background: #0000ff;
-}
-.tv-color-bar:nth-child(8) {
-  background: #000000;
-}
-
-.tv-static-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.15) 0px,
-    rgba(0, 0, 0, 0.15) 2px,
-    transparent 2px,
-    transparent 4px
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-
-.tv-static-vignette {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.7);
-  pointer-events: none;
-  z-index: 3;
-}
-
-.tv-static-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  word-break: keep-all;
-  transform: translate(-50%, -50%);
-  font-family: "VT323", monospace;
-  font-size: 3rem;
-  color: white;
-  text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000;
-  z-index: 4;
-  opacity: 0.9;
-  pointer-events: none;
-}
-
-/* Album sliding from right */
-#album-slide-container {
-  position: absolute;
-  top: 0;
-  left: 100%;
-  width: 100%;
-  height: 100%;
-  /* Above bars/static overlays, below the screen-off layer */
-  z-index: 6;
-  will-change: transform;
-}
-
-/* ============================================
-           ALBUM SECTION (inside slide container)
-           ============================================ */
-#album-section {
-  background: linear-gradient(
-    180deg,
-    var(--vapor-dark) 0%,
-    #0f0520 50%,
-    var(--vapor-darker) 100%
-  );
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: start;
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-/* Scale the whole desktop to fit inside the PC screen */
-.pc-screen-mask #album-section {
-  transform: scale(var(--pc-desktop-scale));
-  transform-origin: 0 0;
-  width: calc(100% / var(--pc-desktop-scale));
-  height: calc(100% / var(--pc-desktop-scale));
-}
-
-/* Inside-screen layout tightening (so everything fits cleanly) */
-.pc-screen-mask .paint-and-cassette-container {
-  gap: 10px;
-  /* Balanced padding for better centering */
-  padding: 10px 16px;
-}
-
-.pc-screen-mask .paint-stage {
-  width: 100%;
-}
-
-/* Reduce extra right-side canvas extension so the cassette stays in-frame */
-.pc-screen-mask #cassette-gen-canvas {
-  width: calc(100% + 120px);
 }
