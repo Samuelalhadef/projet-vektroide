@@ -442,15 +442,36 @@
   }
 
   // Expose function to zoom out PC when cassette is created
+  // Animates smoothly to unzoomed state while keeping the view centered
   window.zoomOutPC = function () {
-    pcContainer.classList.remove("pc-zoomed");
-    pcContainer.classList.add("pc-zoomed-out", "cassette-ejecting");
-    zoomAnchorScrollY = null;
-    zoomStart = null;
+    pcContainer.classList.add("cassette-ejecting");
+
+    // If not currently zoomed, just add the zoomed-out class
+    if (!pcContainer.classList.contains("pc-zoomed")) {
+      pcContainer.classList.add("pc-zoomed-out");
+      return;
+    }
+
+    // Cancel any scroll-driven zoom
     if (zoomRaf) {
       cancelAnimationFrame(zoomRaf);
       zoomRaf = 0;
     }
+    zoomAnchorScrollY = null;
+    zoomStart = null;
+
+    // Animate the CSS variables to identity (scale=1, tx=0, ty=0)
+    // The transform will smoothly go to translate3d(0,0,0) scale(1) which is visually identity
+    pcContainer.style.setProperty("--pc-zoom-scale", "1");
+    pcContainer.style.setProperty("--pc-zoom-tx", "0px");
+    pcContainer.style.setProperty("--pc-zoom-ty", "0px");
+
+    // After the animation completes, remove the zoomed class and add zoomed-out
+    // The CSS transition on #pc-container is 0.8s
+    setTimeout(() => {
+      pcContainer.classList.remove("pc-zoomed");
+      pcContainer.classList.add("pc-zoomed-out");
+    }, 850);
   };
 
   // Gradual zoom-out: proportional to how far the user has scrolled since zoom-in.
@@ -1545,8 +1566,9 @@
   // Make stickers layer match canvas position
   stickersLayer.style.position = "absolute";
   stickersLayer.style.inset = "4px";
-  // Must be interactive so placed stickers can be dragged/removed.
-  stickersLayer.style.pointerEvents = "auto";
+  // Keep pointer-events: none on the layer so clicks pass through to place new stickers.
+  // Individual .canvas-sticker elements have pointer-events: auto for dragging/removal.
+  stickersLayer.style.pointerEvents = "none";
   stickersLayer.style.touchAction = "none";
 
   // ============================================
@@ -1890,6 +1912,8 @@
 
     group.userData.leftReel = leftReel;
     group.userData.rightReel = rightReel;
+    group.userData.labelMesh = label;
+    group.userData.labelMat = cassetteLabelMat;
 
     // Base pose (actual slide positioning is computed from the output slot)
     group.position.set(0, 0, 0);
@@ -2086,26 +2110,43 @@
     state.inserted = true;
     cassetteEl.classList.add("is-inserting");
 
-    // Animate to player center
+    // Animate the cassette sliding into the player from the side (left)
     const playerSection = document.getElementById("player-section");
-    if (playerSection) {
-      const rect = playerSection.getBoundingClientRect();
-      cassetteEl.style.left = rect.left + rect.width / 2 + "px";
-      cassetteEl.style.top = rect.top + rect.height / 2 + "px";
-      cassetteEl.style.transform = "translate(-50%, -50%) scale(0.3)";
+    const playerCanvas = document.getElementById("player-canvas");
+    if (playerSection && playerCanvas) {
+      const canvasRect = playerCanvas.getBoundingClientRect();
+      // Position cassette at the left side of the player, vertically centered
+      const startX = canvasRect.left + canvasRect.width * 0.3;
+      const startY = canvasRect.top + canvasRect.height * 0.5;
+
+      // First move to the entry position
+      cassetteEl.style.transition = "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out";
+      cassetteEl.style.left = startX + "px";
+      cassetteEl.style.top = startY + "px";
+      cassetteEl.style.transform = "translate(-50%, -50%) scale(0.6)";
+
+      // Then slide INTO the player (move left and shrink as if entering the slot)
+      setTimeout(() => {
+        cassetteEl.style.transition = "left 400ms ease-in, top 400ms ease-in, transform 400ms ease-in, opacity 400ms ease-in";
+        cassetteEl.style.left = (canvasRect.left + canvasRect.width * 0.15) + "px";
+        cassetteEl.style.transform = "translate(-50%, -50%) scale(0.2)";
+        cassetteEl.style.opacity = "0";
+      }, 350);
     }
 
     // Hide after animation and trigger player insertion
     setTimeout(() => {
       cassetteEl.classList.remove("is-visible", "is-inserting");
       cassetteEl.hidden = true;
+      cassetteEl.style.opacity = "";
+      cassetteEl.style.transition = "";
       floatStop();
 
       // Trigger the player to insert the tape
       if (window.VEKTROID && window.VEKTROID.insertGeneratedTape) {
         window.VEKTROID.insertGeneratedTape();
       }
-    }, 600);
+    }, 800);
   }
 
   function forcePcZoomOut() {
@@ -2198,7 +2239,7 @@
     fill.position.set(4, 1.2, 2);
     floatScene.add(fill);
 
-    // Reuse the cassette geometry builder (ensures label material is the same).
+    // Build the cassette geometry for the floating cassette.
     floatCassette = buildCassetteGroup();
     const tuning = VEKTROID.cassetteTuning;
     // Facing direction: tweak via VEKTROID.cassetteTuning.rotation
@@ -2213,6 +2254,13 @@
       tuning?.meshPosition?.z ?? 0
     );
     floatScene.add(floatCassette);
+
+    // Apply the generated label texture to the floating cassette's label material
+    // so it shows the same design as the generator cassette.
+    if (labelTexture && floatCassette.userData.labelMat) {
+      floatCassette.userData.labelMat.map = labelTexture;
+      floatCassette.userData.labelMat.needsUpdate = true;
+    }
 
     resizeFloatingCassette3D();
     window.addEventListener("resize", resizeFloatingCassette3D);
@@ -2284,6 +2332,13 @@
     ensureFloatingCassette3D();
     ensureCassetteFollowHandlers();
     floatStart();
+
+    // Update the floating cassette's label texture each time it's shown
+    // in case a new cassette was generated with a different design.
+    if (floatCassette && labelTexture && floatCassette.userData.labelMat) {
+      floatCassette.userData.labelMat.map = labelTexture;
+      floatCassette.userData.labelMat.needsUpdate = true;
+    }
 
     if (floatCassette) {
       // Start tucked in, then slide out straight (mesh-space axis).

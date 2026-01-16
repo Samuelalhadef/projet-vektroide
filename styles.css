@@ -2235,8 +2235,8 @@ button:focus {
 /* Floating 3D cassette - draggable sticky cassette */
 #floating-cassette-3d {
   position: fixed;
-  width: 280px;
-  height: 200px;
+  width: 420px;
+  height: 300px;
   opacity: 0;
   z-index: 15000;
   pointer-events: none;
