@@ -2154,15 +2154,18 @@
       const startY = canvasRect.top + canvasRect.height * 0.5;
 
       // First move to the entry position
-      cassetteEl.style.transition = "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out";
+      cassetteEl.style.transition =
+        "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out";
       cassetteEl.style.left = startX + "px";
       cassetteEl.style.top = startY + "px";
       cassetteEl.style.transform = "translate(-50%, -50%) scale(0.6)";
 
       // Then slide INTO the player (move left and shrink as if entering the slot)
       setTimeout(() => {
-        cassetteEl.style.transition = "left 400ms ease-in, top 400ms ease-in, transform 400ms ease-in, opacity 400ms ease-in";
-        cassetteEl.style.left = (canvasRect.left + canvasRect.width * 0.15) + "px";
+        cassetteEl.style.transition =
+          "left 400ms ease-in, top 400ms ease-in, transform 400ms ease-in, opacity 400ms ease-in";
+        cassetteEl.style.left =
+          canvasRect.left + canvasRect.width * 0.15 + "px";
         cassetteEl.style.transform = "translate(-50%, -50%) scale(0.2)";
         cassetteEl.style.opacity = "0";
       }, 350);
@@ -2648,7 +2651,7 @@
   });
   const windowMat = new THREE.MeshPhysicalMaterial({
     color: 0x111111,
-    transmission: 0.8,
+    transmission: 0.2,
     thickness: 1,
     roughness: 0.1,
   });
@@ -2706,12 +2709,6 @@
   const doorGroup = new THREE.Group();
   doorGroup.position.set(0, 0.25, 0.75);
   playerGroup.add(doorGroup);
-
-  const glassPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(3.0, 2.0, 0.05),
-    windowMat
-  );
-  doorGroup.add(glassPanel);
 
   // Vaporwave Buttons
   const buttons = [];
