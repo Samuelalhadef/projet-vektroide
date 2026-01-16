@@ -1042,16 +1042,30 @@
   const paintToolColors = document.getElementById("paint-tool-colors");
   const paintToolStickers = document.getElementById("paint-tool-stickers");
 
+  // Cache element arrays for fast selection clearing (performance optimization)
+  const colorElements = [];
+  const stickerElements = [];
+  const menubarTabs = paintMenubar
+    ? Array.from(paintMenubar.querySelectorAll("[data-paint-tab]"))
+    : [];
+
   function setStatus(text) {
     // Statusbar removed; keep a lightweight signal for debugging.
     // (No UI element to write to.)
     if (typeof text === "string" && text) console.debug("[Paint]", text);
   }
 
-  function clearSelection(selector) {
-    document.querySelectorAll(selector).forEach((el) => {
-      el.classList.remove("selected");
-    });
+  // Optimized: use cached arrays instead of querySelectorAll each time
+  function clearColorSelection() {
+    for (let i = 0; i < colorElements.length; i++) {
+      colorElements[i].classList.remove("selected");
+    }
+  }
+
+  function clearStickerSelection() {
+    for (let i = 0; i < stickerElements.length; i++) {
+      stickerElements[i].classList.remove("selected");
+    }
   }
 
   function setCursor(value) {
@@ -1060,11 +1074,10 @@
 
   function setMenubarActive(tab) {
     if (!paintMenubar) return;
-    paintMenubar
-      .querySelectorAll("[data-paint-tab]")
-      .forEach((el) =>
-        el.classList.toggle("is-active", el.dataset.paintTab === tab)
-      );
+    for (let i = 0; i < menubarTabs.length; i++) {
+      const el = menubarTabs[i];
+      el.classList.toggle("is-active", el.dataset.paintTab === tab);
+    }
   }
 
   function showToolPanel(panel) {
@@ -1083,7 +1096,7 @@
 
   function enterColorsMode() {
     selectedSticker = null;
-    clearSelection(".paint-sticker");
+    clearStickerSelection();
     setCursor("crosshair");
     showToolPanel("colors");
     setMenubarActive("colors");
@@ -1099,7 +1112,7 @@
 
   function enterBackgroundMode() {
     selectedSticker = null;
-    clearSelection(".paint-sticker");
+    clearStickerSelection();
     showToolPanel("background");
     setMenubarActive("background");
     setCursor("crosshair");
@@ -1364,22 +1377,22 @@
     return brightness > 128;
   }
 
-  // Create color palette
-  colors.forEach((color, index) => {
+  // Create color palette (use DocumentFragment for batch DOM insertion)
+  const colorFragment = document.createDocumentFragment();
+  colors.forEach((color) => {
     const colorDiv = document.createElement("div");
     colorDiv.className = "paint-color";
     colorDiv.style.backgroundColor = color;
     if (color === currentBgColor) colorDiv.classList.add("selected");
 
     colorDiv.addEventListener("click", () => {
-      // Remove selected from all
-      clearSelection(".paint-color");
+      clearColorSelection();
       colorDiv.classList.add("selected");
       currentBgColor = color;
 
       // Switching background color is a "colors" action.
       selectedSticker = null;
-      clearSelection(".paint-sticker");
+      clearStickerSelection();
 
       // Redraw canvas with new background and text
       renderMode = "default";
@@ -1387,10 +1400,13 @@
       setStatus("背景色変更 Background changed");
     });
 
-    colorPalette.appendChild(colorDiv);
+    colorElements.push(colorDiv);
+    colorFragment.appendChild(colorDiv);
   });
+  colorPalette.appendChild(colorFragment);
 
-  // Create stickers panel
+  // Create stickers panel (use DocumentFragment for batch DOM insertion)
+  const stickerFragment = document.createDocumentFragment();
   stickers.forEach((sticker) => {
     const stickerDiv = document.createElement("div");
     stickerDiv.className = "paint-sticker";
@@ -1404,15 +1420,17 @@
     stickerDiv.appendChild(img);
 
     stickerDiv.addEventListener("click", () => {
-      clearSelection(".paint-sticker");
+      clearStickerSelection();
       stickerDiv.classList.add("selected");
       selectedSticker = sticker;
       setStatus("クリックして配置 Click to place: " + sticker.name);
       setCursor("copy");
     });
 
-    stickersPanel.appendChild(stickerDiv);
+    stickerElements.push(stickerDiv);
+    stickerFragment.appendChild(stickerDiv);
   });
+  stickersPanel.appendChild(stickerFragment);
 
   if (generateArtBtn) {
     generateArtBtn.addEventListener("click", () => {
@@ -1556,7 +1574,15 @@
   // Also re-measure whenever the canvas container changes size (open/close, layout shifts, etc.)
   const containerEl = canvas.parentElement;
   if (containerEl && "ResizeObserver" in window) {
-    const ro = new ResizeObserver(() => resizeCanvas());
+    let resizeRafPending = false;
+    const ro = new ResizeObserver(() => {
+      if (resizeRafPending) return;
+      resizeRafPending = true;
+      requestAnimationFrame(() => {
+        resizeRafPending = false;
+        resizeCanvas();
+      });
+    });
     ro.observe(containerEl);
   }
 
@@ -1799,7 +1825,15 @@
     window.addEventListener("resize", resizeCassette3D);
 
     if (typeof ResizeObserver !== "undefined" && paintStage) {
-      resizeObserver = new ResizeObserver(() => resizeCassette3D());
+      let cassetteResizeRafPending = false;
+      resizeObserver = new ResizeObserver(() => {
+        if (cassetteResizeRafPending) return;
+        cassetteResizeRafPending = true;
+        requestAnimationFrame(() => {
+          cassetteResizeRafPending = false;
+          resizeCassette3D();
+        });
+      });
       resizeObserver.observe(paintStage);
     }
   }
@@ -3528,14 +3562,23 @@
   // Start/stop loop based on visibility
   playerUpdateRunning();
 
-  window.addEventListener("resize", () => {
-    width = container.clientWidth;
-    height = container.clientHeight;
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
-    resizeVisualizerCanvas();
-  });
+  // Debounced resize handler to avoid excessive recalculations during window resize
+  let playerResizeTimeout = null;
+  window.addEventListener(
+    "resize",
+    () => {
+      if (playerResizeTimeout) clearTimeout(playerResizeTimeout);
+      playerResizeTimeout = setTimeout(() => {
+        width = container.clientWidth;
+        height = container.clientHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+        resizeVisualizerCanvas();
+      }, 150);
+    },
+    { passive: true }
+  );
 })();
 
 /* ============================================
@@ -3579,15 +3622,19 @@
   }
 
   let scrollTicking = false;
-  window.addEventListener("scroll", () => {
-    if (!scrollTicking) {
-      requestAnimationFrame(() => {
-        updateNavbarVisibility();
-        scrollTicking = false;
-      });
-      scrollTicking = true;
-    }
-  });
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!scrollTicking) {
+        requestAnimationFrame(() => {
+          updateNavbarVisibility();
+          scrollTicking = false;
+        });
+        scrollTicking = true;
+      }
+    },
+    { passive: true }
+  );
 
   // Initial check
   updateNavbarVisibility();
