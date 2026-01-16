@@ -1352,7 +1352,7 @@ button:focus {
 #pc-container.pc-zoomed {
   /* Transform origin 0,0 makes zoom math stable across resizes */
   transform-origin: 0 0;
-  transform: translate3d(var(--pc-zoom-tx), var(--pc-zoom-ty), 0)
+  transform: translate(var(--pc-zoom-tx), var(--pc-zoom-ty))
     scale(var(--pc-zoom-scale));
 }
 

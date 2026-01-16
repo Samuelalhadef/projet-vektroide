@@ -1409,14 +1409,17 @@
   const stickerCache = new Map();
   const placedStickers = [];
   let nextStickerId = 1;
-  let draggingStickerId = null;
-  let dragStickerDx = 0;
-  let dragStickerDy = 0;
 
   const PAINT_CANVAS_CSS_W = 248;
   const PAINT_CANVAS_CSS_H = 100;
-  const STICKER_SIZE_PX = 24;
-  const STICKER_HALF_PX = STICKER_SIZE_PX / 2;
+  const STICKER_SIZE_DEFAULT = 24;
+  const STICKER_MIN_SIZE = 12;
+  const STICKER_MAX_SIZE = 80;
+
+  // Sticker resize state
+  let resizingSticker = null;
+  let resizeStartY = 0;
+  let resizeStartSize = 0;
 
   // Setup canvas size
   function resizeCanvas() {
@@ -1827,11 +1830,12 @@
 
     const hit = findTopStickerAt(p.x, p.y);
     if (hit) {
-      draggingStickerId = hit.id;
-      dragStickerDx = p.x - hit.x;
-      dragStickerDy = p.y - hit.y;
+      // Start resizing the sticker
+      resizingSticker = hit;
+      resizeStartY = p.y;
+      resizeStartSize = hit.size;
       canvas.setPointerCapture?.(e.pointerId);
-      setCursor("move");
+      setCursor("nwse-resize");
       e.preventDefault();
       return;
     }
@@ -1845,7 +1849,7 @@
         img,
         x: p.x,
         y: p.y,
-        size: STICKER_SIZE_PX,
+        size: STICKER_SIZE_DEFAULT,
       };
       clampStickerToCanvas(s);
       placedStickers.push(s);
@@ -1865,13 +1869,15 @@
 
   canvas.addEventListener("pointermove", (e) => {
     const p = getCanvasPointFromEvent(e);
-    if (draggingStickerId != null) {
-      const s = placedStickers.find((x) => x.id === draggingStickerId);
-      if (!s) return;
-      s.x = p.x - dragStickerDx;
-      s.y = p.y - dragStickerDy;
-      clampStickerToCanvas(s);
+
+    // Resizing a sticker
+    if (resizingSticker != null) {
+      const deltaY = p.y - resizeStartY;
+      const newSize = Math.max(STICKER_MIN_SIZE, Math.min(STICKER_MAX_SIZE, resizeStartSize + deltaY * 2));
+      resizingSticker.size = newSize;
+      clampStickerToCanvas(resizingSticker);
       renderCanvas({ keepArt: true });
+      setStatus("サイズ変更 Resize: " + Math.round(newSize) + "px");
       return;
     }
 
@@ -1883,24 +1889,25 @@
 
     const hit = findTopStickerAt(p.x, p.y);
     if (hit) {
-      setCursor("move");
+      setCursor("nwse-resize");
     } else {
       setCursor(selectedSticker ? "copy" : "crosshair");
     }
   });
 
-  function stopCanvasDrag() {
-    if (draggingStickerId == null) return;
-    draggingStickerId = null;
+  function stopStickerResize() {
+    if (resizingSticker == null) return;
+    resizingSticker = null;
     setCursor(selectedSticker ? "copy" : "crosshair");
+    setStatus("ステッカー Stickers\u3000選んでクリックで配置");
   }
 
   canvas.addEventListener("pointerup", () => {
-    stopCanvasDrag();
+    stopStickerResize();
     endStroke();
   });
   canvas.addEventListener("pointercancel", () => {
-    stopCanvasDrag();
+    stopStickerResize();
     endStroke();
   });
 
