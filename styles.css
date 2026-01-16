@@ -527,7 +527,7 @@ section {
            ============================================ */
 .paint-window {
   background: #c0c0c0;
-  border: 3px solid;
+  border: 1px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
   box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #0a0a0a,
     4px 4px 10px rgba(0, 0, 0, 0.5);
@@ -605,7 +605,7 @@ section {
 /* Menubar CREATE button (small, special look) */
 .paint-create-btn {
   margin-left: auto;
-  height: 12px;
+  height: 10px;
   padding: 0 4px;
   display: inline-flex;
   align-items: center;
@@ -619,7 +619,7 @@ section {
   color: #0d0221;
   cursor: pointer;
   font-family: "VT323", monospace;
-  font-size: 0.3rem;
+  font-size: 0.4rem;
   line-height: 1;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -856,9 +856,8 @@ section {
   background: linear-gradient(180deg, #c0c0c0 0%, #a0a0a0 100%);
   border: 3px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
-  padding: 8px 10px;
+  padding: 4px 6px;
   font-family: "VT323", monospace;
-  font-size: 0.85rem;
   color: #000;
   cursor: pointer;
   display: flex;
@@ -883,7 +882,7 @@ section {
 .generate-art-btn {
   background: linear-gradient(180deg, #d6d6ff 0%, #a9b0ff 100%);
   color: #090019;
-  padding: 4px 6px;
+  padding: 2px 4px;
   min-width: 64px;
   gap: 2px;
   font-size: 0.5rem;
@@ -1285,7 +1284,7 @@ button:focus {
            ============================================ */
 #pc-section {
   position: relative;
-  min-height: 180vh;
+  min-height: 140vh;
   display: flex;
   justify-content: center;
   align-items: center;

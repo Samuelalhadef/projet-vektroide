@@ -1070,8 +1070,6 @@
   }
 
   function enterStickersMode() {
-    renderMode = "default";
-    renderCanvas();
     showToolPanel("stickers");
     setMenubarActive("stickers");
     setCursor(selectedSticker ? "copy" : "crosshair");
@@ -1166,6 +1164,7 @@
   let currentBgColor = "#ff71ce"; // Pink vaporwave default (so turquoise text is visible)
   let selectedSticker = null;
   let renderMode = "default";
+  let artSnapshotCanvas = null;
 
   const PAINT_CANVAS_CSS_W = 248;
   const PAINT_CANVAS_CSS_H = 100;
@@ -1188,15 +1187,42 @@
     canvas.height = Math.floor(cssH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    renderCanvas();
+    renderCanvas({ keepArt: true });
   }
 
-  function renderCanvas() {
+  function drawArtSnapshotToCanvas() {
+    if (!artSnapshotCanvas) return false;
+
+    // Draw in backing-store pixels so it survives DPR changes.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(artSnapshotCanvas, 0, 0, canvas.width, canvas.height);
+
+    const dpr = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    return true;
+  }
+
+  function snapshotArtFromCanvas() {
+    artSnapshotCanvas = document.createElement("canvas");
+    artSnapshotCanvas.width = canvas.width;
+    artSnapshotCanvas.height = canvas.height;
+    const sctx = artSnapshotCanvas.getContext("2d");
+    sctx.drawImage(canvas, 0, 0);
+  }
+
+  function renderCanvas({ keepArt = true } = {}) {
     if (renderMode === "art") {
+      if (keepArt && drawArtSnapshotToCanvas()) return;
       renderProceduralArt();
+      snapshotArtFromCanvas();
       return;
     }
+
     renderDefaultCanvas();
+    // Leaving art mode should clear the stored art so it doesn't reappear later.
+    artSnapshotCanvas = null;
   }
 
   // Draw canvas with background and default text
@@ -1370,7 +1396,7 @@
   if (generateArtBtn) {
     generateArtBtn.addEventListener("click", () => {
       renderMode = "art";
-      renderCanvas();
+      renderCanvas({ keepArt: false });
       setStatus("アート生成完了 Art generated!");
       setCursor("crosshair");
     });
@@ -1452,12 +1478,17 @@
   document.addEventListener("pointerup", stopStickerDrag);
   document.addEventListener("pointercancel", stopStickerDrag);
 
-  canvas.addEventListener("click", (e) => {
+  const paintCanvasContainerEl = canvas.closest(".paint-canvas-container");
+  function placeStickerAtEventPoint(e) {
     if (!selectedSticker) return;
+    // Don't place a new sticker when interacting with an existing one.
+    if (e.target && e.target.closest?.(".canvas-sticker")) return;
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
 
     const stickerEl = document.createElement("div");
     stickerEl.className = "canvas-sticker";
@@ -1488,7 +1519,14 @@
 
     stickersLayer.appendChild(stickerEl);
     setStatus("ステッカー配置完了 Sticker placed!");
-  });
+  }
+
+  // Clicking the canvas area places a sticker (works even when stickers layer is interactive).
+  if (paintCanvasContainerEl) {
+    paintCanvasContainerEl.addEventListener("click", placeStickerAtEventPoint);
+  } else {
+    canvas.addEventListener("click", placeStickerAtEventPoint);
+  }
 
   // Initialize
   resizeCanvas();
@@ -1507,7 +1545,9 @@
   // Make stickers layer match canvas position
   stickersLayer.style.position = "absolute";
   stickersLayer.style.inset = "4px";
-  stickersLayer.style.pointerEvents = "none";
+  // Must be interactive so placed stickers can be dragged/removed.
+  stickersLayer.style.pointerEvents = "auto";
+  stickersLayer.style.touchAction = "none";
 
   // ============================================
   // CASSETTE GENERATOR - INDUSTRIAL MACHINE
@@ -1524,6 +1564,23 @@
   VEKTROID.generatedCassette = VEKTROID.generatedCassette || {
     ready: false,
     labelCanvas: null,
+  };
+
+  // Tune floating cassette spawn/orientation/ejection here.
+  // You can tweak this live in DevTools via `VEKTROID.cassetteTuning`.
+  VEKTROID.cassetteTuning = VEKTROID.cassetteTuning || {
+    // Rotation of the floating cassette mesh (radians)
+    rotation: { x: Math.PI / 2, y: Math.PI, z: Math.PI / 2 },
+    // Small offset of the mesh in its own scene
+    meshPosition: { x: 0, y: 0, z: 0 },
+    // Where on the screen the floating canvas spawns (relative to #pc-cassette-reader center)
+    screenOffset: { x: 0, y: 0 },
+    // Ejection motion in mesh-space: choose axis and direction
+    eject: { axis: "z", from: -0.9, to: 0.35, durationMs: 900 },
+    // Spin response while dragging/scrolling
+    // `drag` is roughly radians per pixel of drag.
+    // `scroll` is radians per pixel of page scroll.
+    spin: { drag: 0.0022, scroll: 0.00008, damping: 0.92 },
   };
 
   let smokeInterval = null;
@@ -1933,6 +1990,8 @@
 
     let dragOffsetX = 0;
     let dragOffsetY = 0;
+    let lastClientX = 0;
+    let lastClientY = 0;
 
     // Dragging functionality
     cassetteEl.addEventListener("pointerdown", (e) => {
@@ -1944,11 +2003,23 @@
       const rect = cassetteEl.getBoundingClientRect();
       dragOffsetX = e.clientX - (rect.left + rect.width / 2);
       dragOffsetY = e.clientY - (rect.top + rect.height / 2);
+
+      lastClientX = e.clientX;
+      lastClientY = e.clientY;
       e.preventDefault();
     });
 
     cassetteEl.addEventListener("pointermove", (e) => {
       if (!state.dragging || state.inserted) return;
+
+      // Add a little spin based on drag motion.
+      const tuning = VEKTROID.cassetteTuning;
+      const dx = e.clientX - lastClientX;
+      const dy = e.clientY - lastClientY;
+      lastClientX = e.clientX;
+      lastClientY = e.clientY;
+      floatRotVel.y += dx * (tuning?.spin?.drag ?? 0.0022);
+      floatRotVel.x += dy * (tuning?.spin?.drag ?? 0.0022);
 
       state.x = e.clientX - dragOffsetX;
       state.y = e.clientY - dragOffsetY;
@@ -2054,7 +2125,30 @@
   let floatRaf = 0;
   let floatIsRunning = false;
   let floatSpawn = null;
-  let floatRotVel = { x: 0, y: 0 };
+  let floatRotVel = { x: 0, y: 0, z: 0 };
+
+  // Add a small spin impulse while scrolling (feels more "physical").
+  let lastScrollY = window.scrollY || 0;
+  window.addEventListener(
+    "scroll",
+    () => {
+      const state = getCassetteState();
+      if (!state.created || state.inserted) {
+        lastScrollY = window.scrollY || 0;
+        return;
+      }
+
+      const y = window.scrollY || 0;
+      const dy = y - lastScrollY;
+      lastScrollY = y;
+
+      const tuning = VEKTROID.cassetteTuning;
+      const k = tuning?.spin?.scroll ?? 0.00008;
+      // Scroll up/down nudges a pitch-like rotation.
+      floatRotVel.x += dy * k;
+    },
+    { passive: true }
+  );
 
   function getFloatingCassetteCanvas() {
     return document.getElementById("floating-cassette-3d");
@@ -2106,9 +2200,18 @@
 
     // Reuse the cassette geometry builder (ensures label material is the same).
     floatCassette = buildCassetteGroup();
-    // Facing direction: tweak these to match the exact "coming out" orientation.
-    floatCassette.rotation.set(Math.PI / 2, Math.PI, Math.PI / 2);
-    floatCassette.position.set(0, 0, 0);
+    const tuning = VEKTROID.cassetteTuning;
+    // Facing direction: tweak via VEKTROID.cassetteTuning.rotation
+    floatCassette.rotation.set(
+      tuning?.rotation?.x ?? Math.PI / 2,
+      tuning?.rotation?.y ?? Math.PI,
+      tuning?.rotation?.z ?? Math.PI / 2
+    );
+    floatCassette.position.set(
+      tuning?.meshPosition?.x ?? 0,
+      tuning?.meshPosition?.y ?? 0,
+      tuning?.meshPosition?.z ?? 0
+    );
     floatScene.add(floatCassette);
 
     resizeFloatingCassette3D();
@@ -2143,8 +2246,8 @@
     if (floatSpawn && floatCassette) {
       const p = Math.min(1, Math.max(0, (now - floatSpawn.t0) / floatSpawn.d));
       const e = 1 - Math.pow(1 - p, 3);
-      floatCassette.position.x =
-        floatSpawn.x0 + (floatSpawn.x1 - floatSpawn.x0) * e;
+      floatCassette.position[floatSpawn.axis] =
+        floatSpawn.v0 + (floatSpawn.v1 - floatSpawn.v0) * e;
       if (p >= 1) floatSpawn = null;
     }
 
@@ -2156,8 +2259,18 @@
     if (floatCassette) {
       // Gentle idle floating animation
       floatCassette.position.y = Math.sin(t * 1.1) * 0.02;
-      // Slow auto-rotation for visual appeal
-      floatCassette.rotation.y += 0.003;
+
+      const tuning = VEKTROID.cassetteTuning;
+      const damping = tuning?.spin?.damping ?? 0.92;
+
+      // Slow auto-rotation + user-driven spin impulse
+      floatCassette.rotation.x += floatRotVel.x;
+      floatCassette.rotation.y += 0.003 + floatRotVel.y;
+      floatCassette.rotation.z += floatRotVel.z || 0;
+
+      floatRotVel.x *= damping;
+      floatRotVel.y *= damping;
+      floatRotVel.z *= damping;
     }
 
     floatRenderer.render(floatScene, floatCamera);
@@ -2173,20 +2286,33 @@
     floatStart();
 
     if (floatCassette) {
-      // Start tucked in, then slide out in 3D space.
-      floatCassette.position.x = -0.8;
-      floatSpawn = { t0: performance.now(), d: 900, x0: -0.8, x1: 0.3 };
+      // Start tucked in, then slide out straight (mesh-space axis).
+      const tuning = VEKTROID.cassetteTuning;
+      const axis = tuning?.eject?.axis ?? "z";
+      const v0 = tuning?.eject?.from ?? -0.9;
+      const v1 = tuning?.eject?.to ?? 0.35;
+      const d = tuning?.eject?.durationMs ?? 900;
+      floatCassette.position[axis] = v0;
+      floatSpawn = { t0: performance.now(), d, axis, v0, v1 };
     }
 
     // Position the cassette initially near the PC
-    const pcSection = document.getElementById("pc-section");
-    if (pcSection) {
-      const rect = pcSection.getBoundingClientRect();
-      state.x = rect.left + rect.width * 0.7;
-      state.y = rect.top + rect.height * 0.5;
+    const tuning = VEKTROID.cassetteTuning;
+    const reader = document.getElementById("pc-cassette-reader");
+    if (reader) {
+      const r = reader.getBoundingClientRect();
+      state.x = r.left + r.width / 2 + (tuning?.screenOffset?.x ?? 0);
+      state.y = r.top + r.height / 2 + (tuning?.screenOffset?.y ?? 0);
     } else {
-      state.x = window.innerWidth * 0.75;
-      state.y = window.innerHeight * 0.5;
+      const pcSection = document.getElementById("pc-section");
+      if (pcSection) {
+        const rect = pcSection.getBoundingClientRect();
+        state.x = rect.left + rect.width * 0.7;
+        state.y = rect.top + rect.height * 0.5;
+      } else {
+        state.x = window.innerWidth * 0.75;
+        state.y = window.innerHeight * 0.5;
+      }
     }
 
     canvas.hidden = false;
