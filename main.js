@@ -1,4 +1,117 @@
 /* ============================================
+           WINDOWS XP LOGIN LOADING GATE
+           ============================================ */
+(function () {
+  const expectedModels = new Set(["model1", "model2"]);
+  let windowLoaded = false;
+  let finished = false;
+  let startupAudio = null;
+  let userGestureBound = false;
+  let readyToStart = false;
+
+  function getOverlayEl() {
+    return document.getElementById("xp-login-screen");
+  }
+
+  function finishLoading(reason) {
+    if (finished) return;
+    finished = true;
+
+    // Play startup audio when user clicks to start
+    tryPlayStartupAudio();
+
+    const overlay = getOverlayEl();
+    document.documentElement.classList.remove("xp-loading");
+    if (document.body) document.body.classList.remove("xp-loading");
+
+    if (!overlay) return;
+    overlay.classList.add("xp-login--hiding");
+
+    const remove = () => {
+      const el = getOverlayEl();
+      if (el) el.remove();
+    };
+    overlay.addEventListener("transitionend", remove, { once: true });
+    // Fallback in case transitionend doesn't fire (e.g. display changes).
+    setTimeout(remove, 800);
+
+    // eslint-disable-next-line no-unused-vars
+    void reason;
+  }
+
+  function checkReady() {
+    if (readyToStart) return;
+    if (windowLoaded && expectedModels.size === 0) {
+      readyToStart = true;
+      // Update loading text to indicate user can click
+      const loadingText = document.querySelector(".xp-loading-text");
+      if (loadingText) {
+        loadingText.textContent = "Click to continue クリックして続ける";
+      }
+    }
+  }
+
+  function tryPlayStartupAudio() {
+    if (!startupAudio) {
+      startupAudio = new Audio("source/startup.mp3");
+      startupAudio.preload = "auto";
+      startupAudio.volume = 0.8;
+      startupAudio.loop = false;
+    }
+
+    startupAudio.currentTime = 0;
+    const p = startupAudio.play();
+    if (p && typeof p.catch === "function") {
+      p.catch((err) => {
+        console.warn("Could not play startup audio:", err);
+      });
+    }
+  }
+
+  // Expose for GLTF loaders.
+  window.markModelLoaded = function markModelLoaded(id) {
+    if (!id) return;
+    expectedModels.delete(String(id));
+    checkReady();
+  };
+
+  // Ensure body gets the same class once it exists.
+  if (document.body) {
+    document.body.classList.add("xp-loading");
+  } else {
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => document.body && document.body.classList.add("xp-loading"),
+      { once: true }
+    );
+  }
+
+  window.addEventListener(
+    "load",
+    () => {
+      windowLoaded = true;
+      checkReady();
+    },
+    { once: true }
+  );
+
+  // Wait for user click to start
+  const overlay = getOverlayEl();
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      if (readyToStart) {
+        finishLoading("user-click");
+      }
+    });
+  }
+
+  // Safety net: never trap the user forever.
+  setTimeout(() => {
+    if (!finished) finishLoading("timeout");
+  }, 45000);
+})();
+
+/* ============================================
            GENERATE ANIMATED STARS
            ============================================ */
 (function () {
@@ -253,6 +366,8 @@
       console.warn(
         "GLTFLoader not found. Ensure the GLTFLoader script is loaded."
       );
+      // Don't block the boot overlay if the loader script is missing.
+      if (window.markModelLoaded) window.markModelLoaded("model1");
       return;
     }
 
@@ -298,10 +413,19 @@
 
         leftPillar.add(leftInstance);
         rightPillar.add(rightInstance);
+
+        // Mark pillar model as loaded
+        if (window.markModelLoaded) {
+          window.markModelLoaded("model1");
+        }
       },
       undefined,
       (err) => {
         console.error("Failed to load marble pillar GLB:", err);
+        // Mark as loaded even on error to prevent infinite loading
+        if (window.markModelLoaded) {
+          window.markModelLoaded("model1");
+        }
       }
     );
   })();
@@ -376,6 +500,8 @@
       console.warn(
         "GLTFLoader not found. Ensure the GLTFLoader script is loaded."
       );
+      // Don't block the boot overlay if the loader script is missing.
+      if (window.markModelLoaded) window.markModelLoaded("model2");
       return;
     }
 
@@ -434,10 +560,19 @@
           };
           requestAnimationFrame(tick);
         }
+
+        // Mark hero model as loaded
+        if (window.markModelLoaded) {
+          window.markModelLoaded("model2");
+        }
       },
       undefined,
       (err) => {
         console.error("Failed to load hero GLB:", err);
+        // Mark as loaded even on error to prevent infinite loading
+        if (window.markModelLoaded) {
+          window.markModelLoaded("model2");
+        }
       }
     );
   })();
@@ -633,16 +768,46 @@
 
   // Stickers list - images from image_paint folder
   const stickers = [
-    { src: "image_paint/pngtree-dolphin-on-transparent-background-png-image_14018423.png", name: "dolphin" },
-    { src: "image_paint/pngtree-cute-cat-image-png-image_14938303.png", name: "cat" },
-    { src: "image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png", name: "windows" },
-    { src: "image_paint/png-clipart-red-and-silver-crowbar-used-crowbar-tools-and-parts-crowbars-thumbnail.png", name: "crowbar" },
-    { src: "image_paint/pngtree-water-bottle-to-drink-png-image_13038051.png", name: "bottle" },
-    { src: "image_paint/png-clipart-hephaestus-bust-liebieghaus-athena-parthenos-zeus-greek-statue-stone-carving-aphrodite-thumbnail.png", name: "statue" },
-    { src: "image_paint/png-clipart-wikipedia-logo-wordmark-wikimedia-foundation-bolder-globe-text.png", name: "wikipedia" },
-    { src: "image_paint/png-clipart-anime-pixel-art-kawaii-anime-child-face.png", name: "anime" },
-    { src: "image_paint/png-clipart-sunglasses-graphy-glasses-angle-text-thumbnail.png", name: "sunglasses" },
-    { src: "image_paint/pngtree-cd-png-element-png-image_2344136.jpg", name: "cd" },
+    {
+      src: "image_paint/pngtree-dolphin-on-transparent-background-png-image_14018423.png",
+      name: "dolphin",
+    },
+    {
+      src: "image_paint/pngtree-cute-cat-image-png-image_14938303.png",
+      name: "cat",
+    },
+    {
+      src: "image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png",
+      name: "windows",
+    },
+    {
+      src: "image_paint/png-clipart-red-and-silver-crowbar-used-crowbar-tools-and-parts-crowbars-thumbnail.png",
+      name: "crowbar",
+    },
+    {
+      src: "image_paint/pngtree-water-bottle-to-drink-png-image_13038051.png",
+      name: "bottle",
+    },
+    {
+      src: "image_paint/png-clipart-hephaestus-bust-liebieghaus-athena-parthenos-zeus-greek-statue-stone-carving-aphrodite-thumbnail.png",
+      name: "statue",
+    },
+    {
+      src: "image_paint/png-clipart-wikipedia-logo-wordmark-wikimedia-foundation-bolder-globe-text.png",
+      name: "wikipedia",
+    },
+    {
+      src: "image_paint/png-clipart-anime-pixel-art-kawaii-anime-child-face.png",
+      name: "anime",
+    },
+    {
+      src: "image_paint/png-clipart-sunglasses-graphy-glasses-angle-text-thumbnail.png",
+      name: "sunglasses",
+    },
+    {
+      src: "image_paint/pngtree-cd-png-element-png-image_2344136.jpg",
+      name: "cd",
+    },
   ];
 
   let currentBgColor = "#ff71ce"; // Pink vaporwave default (so turquoise text is visible)
@@ -2308,4 +2473,44 @@
     renderer.setSize(width, height);
     resizeVisualizerCanvas();
   });
+})();
+
+/* ============================================
+           NAVBAR SCROLL HIDE/SHOW
+           ============================================ */
+(function () {
+  const navbar = document.querySelector(".xp-navbar");
+  const tvTransitionWrapper = document.getElementById("tv-transition-wrapper");
+  const playerSection = document.getElementById("player-section");
+
+  if (!navbar || !tvTransitionWrapper || !playerSection) return;
+
+  function updateNavbarVisibility() {
+    const tvRect = tvTransitionWrapper.getBoundingClientRect();
+    const playerRect = playerSection.getBoundingClientRect();
+
+    // Hide navbar when tv-transition-wrapper (computer section) is in view
+    // Show navbar when player-section (cassette player) is in view
+    if (tvRect.top <= 0 && tvRect.bottom > window.innerHeight * 0.3) {
+      // In computer section - hide navbar
+      navbar.classList.add("navbar-hidden");
+    } else if (playerRect.top <= window.innerHeight * 0.5) {
+      // Reached player section - show navbar
+      navbar.classList.remove("navbar-hidden");
+    }
+  }
+
+  let scrollTicking = false;
+  window.addEventListener("scroll", () => {
+    if (!scrollTicking) {
+      requestAnimationFrame(() => {
+        updateNavbarVisibility();
+        scrollTicking = false;
+      });
+      scrollTicking = true;
+    }
+  });
+
+  // Initial check
+  updateNavbarVisibility();
 })();

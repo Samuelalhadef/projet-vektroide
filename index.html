@@ -8,6 +8,222 @@
         content="VEKTROID - Immersive vaporwave experience featuring Floral Shoppe aesthetics with interactive 3D visuals">
     <meta name="theme-color" content="#1a0a2e">
     <title>VEKTROID // フローラルの専門店</title>
+
+    <!-- Critical: show Windows XP-style login immediately (before external CSS/JS) -->
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            background: var(--vapor-darker);
+            color: white;
+            font-family: "VT323", monospace;
+            overflow-x: hidden;
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" shape-rendering="crispEdges"><path d="M4 2 L4 22 L8 18 L10 26 L14 24 L12 16 L18 16 Z" fill="%23ffffff" stroke="%23000000" stroke-width="2"/><path d="M6 6 L6 18 L9 15 L11 22 L12 21 L10 14 L15 14 Z" fill="%23cfcfcf"/></svg>') 0 0,
+                auto;
+        }
+
+        html.xp-loading,
+        body.xp-loading {
+            overflow: hidden;
+        }
+
+        #xp-login-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 20000;
+            background: linear-gradient(180deg, #0b2d7a 0%, #0b2d7a 60%, #0a2a72 100%);
+            color: #fff;
+            font-family: Tahoma, Verdana, Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.25;
+            display: grid;
+            /* Match navbar height for the top bar; slightly taller bottom bar like XP */
+            grid-template-rows: 68px 1fr 104px;
+        }
+
+        /* Isolate from late-loading CSS (e.g. Tailwind preflight) */
+        #xp-login-screen,
+        #xp-login-screen *,
+        #xp-login-screen *::before,
+        #xp-login-screen *::after {
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        #xp-login-screen img {
+            display: block;
+        }
+
+        #xp-login-screen button {
+            font: inherit;
+            line-height: inherit;
+        }
+
+        #xp-login-screen[hidden] {
+            display: none !important;
+        }
+
+        #xp-login-screen .xp-login-blue-bar-top {
+            background: linear-gradient(180deg, #3d7ee3 0%, #1f5bbd 65%, #154aa5 100%);
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+        }
+
+        #xp-login-screen .xp-login-blue-bar-bottom {
+            background: linear-gradient(180deg, #2a63c9 0%, #1e56bd 60%, #154aa5 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+            display: grid;
+            grid-template-columns: 1fr;
+            align-content: center;
+            padding: 14px 28px;
+            gap: 10px;
+        }
+
+        #xp-login-screen .xp-login-center {
+            display: grid;
+            grid-template-columns: 1fr 2px 1fr;
+            align-items: center;
+            padding: 0 6vw;
+        }
+
+        #xp-login-screen .xp-login-divider {
+            height: 58%;
+            background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+            filter: blur(0.2px);
+        }
+
+        #xp-login-screen .xp-login-left-panel {
+            display: grid;
+            justify-items: start;
+            gap: 18px;
+        }
+
+        #xp-login-screen .xp-login-logo {
+            /* Fixed size prevents layout shift while the image loads */
+            width: 320px;
+            height: 120px;
+            max-width: min(320px, 48vw);
+            object-fit: contain;
+            image-rendering: auto;
+        }
+
+        #xp-login-screen .xp-login-prompt {
+            font-size: 20px;
+            letter-spacing: 0.2px;
+            opacity: 0.95;
+        }
+
+        #xp-login-screen .xp-login-right-panel {
+            display: grid;
+            justify-items: start;
+            padding-left: 22px;
+        }
+
+        #xp-login-screen .xp-user-entry {
+            display: grid;
+            grid-template-columns: 74px 1fr;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 14px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.14);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        #xp-login-screen .xp-user-entry:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        #xp-login-screen .xp-user-icon-frame {
+            width: 74px;
+            height: 74px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #f2f2f2 0%, #d7d7d7 100%);
+            border: 1px solid rgba(0, 0, 0, 0.55);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            display: grid;
+            place-items: center;
+        }
+
+        /* Lock avatar sizing so Tailwind / global img rules can't restyle it */
+        #xp-login-screen .xp-user-img {
+            width: 74px;
+            height: 74px;
+            object-fit: cover;
+            display: block;
+            max-width: none;
+        }
+
+        #xp-login-screen .xp-username {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        #xp-login-screen .xp-loading-text {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        #xp-login-screen svg {
+            display: block;
+        }
+
+        /* Lock button appearance so Tailwind can't "normalize" it later */
+        #xp-login-screen .xp-turn-off-btn {
+            -webkit-appearance: none;
+            appearance: none;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-style: solid;
+            background: rgba(0, 0, 0, 0.18);
+            color: #fff;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: default;
+            user-select: none;
+            text-decoration: none;
+            text-transform: none;
+        }
+
+        #xp-login-screen .xp-turn-off-btn svg {
+            flex: 0 0 auto;
+        }
+
+        #xp-login-screen .xp-turn-off-desc {
+            font-size: 12px;
+            opacity: 0.85;
+        }
+
+        #xp-login-screen .loading-pulse {
+            position: relative;
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            #xp-login-screen .loading-pulse::after {
+                animation: none;
+                display: none;
+            }
+        }
+    </style>
+
+    <script>
+        // Mark the document as "loading" immediately (before deferred scripts run).
+        document.documentElement.classList.add('xp-loading');
+        document.body && document.body.classList.add('xp-loading');
+    </script>
     <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" defer></script>
@@ -16,10 +232,55 @@
     <link
         href="https://fonts.googleapis.com/css2?family=VT323&family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap"
         rel="stylesheet">
+    <link rel="preload" href="source/startup.mp3" as="audio" type="audio/mpeg">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <!-- Windows XP login loading overlay (hidden by main.js when models + window load complete) -->
+    <div id="xp-login-screen" role="status" aria-live="polite" aria-label="Loading">
+        <div class="xp-login-blue-bar-top"></div>
+
+        <div class="xp-login-center">
+            <div class="xp-login-left-panel">
+                <img src="image_paint/WindowsXP.png" alt="Windows XP" class="xp-login-logo" width="320" height="120"
+                    decoding="async" loading="eager">
+                <div class="xp-login-prompt">To begin, click your user name</div>
+            </div>
+
+            <div class="xp-login-divider" aria-hidden="true"></div>
+
+            <div class="xp-login-right-panel">
+                <div class="xp-user-entry loading-pulse" aria-label="Loading Personal Settings">
+                    <div class="xp-user-icon-frame" aria-hidden="true">
+                        <img src="image_paint/png-clipart-anime-pixel-art-kawaii-anime-child-face.png" alt=""
+                            class="xp-user-img" width="74" height="74" decoding="async" loading="eager">
+                    </div>
+                    <div class="xp-user-details">
+                        <div class="xp-username">Guest</div>
+                        <div class="xp-loading-text">Loading Personal Settings...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="xp-login-blue-bar-bottom">
+            <div class="xp-turn-off-container">
+                <button class="xp-turn-off-btn" type="button" tabindex="-1" aria-disabled="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                        <path fill="currentColor"
+                            d="M16.56,5.44L15.11,6.89C16.84,7.94 18,9.83 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12C6,9.83 7.16,7.94 8.88,6.88L7.44,5.44C5.36,6.88 4,9.28 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12C20,9.28 18.64,6.88 16.56,5.44M13,3H11V13H13" />
+                    </svg>
+                    <span>Turn off computer</span>
+                </button>
+            </div>
+            <div class="xp-turn-off-desc">
+                After you log on, you can add or change accounts.<br>
+                Just go to Control Panel and click User Accounts.
+            </div>
+        </div>
+    </div>
+
     <!-- Overlay Effects -->
     <div class="crt-overlay"></div>
     <div class="vhs-overlay"></div>
@@ -31,12 +292,7 @@
     <!-- Navbar -->
     <nav class="xp-navbar" role="navigation" aria-label="Main navigation">
         <div class="start-btn" aria-label="Start">
-            <div class="w-4 h-4 bg-white relative overflow-hidden mr-2 border border-blue-800 shadow-sm">
-                <div class="absolute top-0 left-0 w-1/2 h-1/2 bg-[#F35325]"></div>
-                <div class="absolute top-0 right-0 w-1/2 h-1/2 bg-[#81BC06]"></div>
-                <div class="absolute bottom-0 left-0 w-1/2 h-1/2 bg-[#05A6F0]"></div>
-                <div class="absolute bottom-0 right-0 w-1/2 h-1/2 bg-[#FFBA08]"></div>
-            </div>
+            <img src="image_paint/WindowsXP.png" alt="Start Button Icon" class="start-icon">
             <span>start</span>
         </div>
         <div class="xp-nav-links">
@@ -113,7 +369,9 @@
                                         <!-- Paint Window Interface -->
                                         <div class="paint-window">
                                             <div class="paint-titlebar">
-                                                <span><img src="image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png" alt="Paint" class="titlebar-icon"> untitled - Paint ペイント</span>
+                                                <span><img
+                                                        src="image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png"
+                                                        alt="Paint" class="titlebar-icon"> untitled - Paint ペイント</span>
                                                 <div class="paint-titlebar-buttons">
                                                     <div class="paint-titlebar-btn">_</div>
                                                     <div class="paint-titlebar-btn">□</div>
@@ -143,7 +401,9 @@
                                                 </div>
                                                 <!-- Generate Cassette Button in toolbar -->
                                                 <button class="generate-cassette-btn" id="generate-cassette-btn">
-                                                    <span class="btn-icon"><img src="FloralShoppeCassette/tape cover.png" alt="Cassette" class="cassette-icon"></span>
+                                                    <span class="btn-icon"><img
+                                                            src="FloralShoppeCassette/tape cover.png" alt="Cassette"
+                                                            class="cassette-icon"></span>
                                                     <span class="btn-text">CREATE<br>カセット生成</span>
                                                 </button>
                                             </div>
