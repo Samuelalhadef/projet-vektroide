@@ -292,7 +292,7 @@
     <!-- Navbar -->
     <nav class="xp-navbar" role="navigation" aria-label="Main navigation">
         <div class="start-btn" aria-label="Start">
-            <img src="image_paint/WindowsXP.png" alt="Start Button Icon" class="start-icon">
+            <img src="image_paint/WindowsXP.png" alt="Start Button Icon">
             <span>start</span>
         </div>
         <div class="xp-nav-links">
@@ -330,6 +330,7 @@
             <div id="pc-boot-layer">
                 <!-- Checkerboard floor -->
                 <div class="vaporwave-floor">
+                    <div class="floor-stars" id="floor-stars"></div>
                     <div class="floor-reflection"></div>
                 </div>
                 <div id="pc-boot">
@@ -399,6 +400,9 @@
                                                         <!-- Stickers will be added by JS -->
                                                     </div>
                                                 </div>
+                                                <button class="generate-art-btn" id="generate-art-btn">
+                                                    <span class="btn-text">GENERATE ART<br>アート生成</span>
+                                                </button>
                                                 <!-- Generate Cassette Button in toolbar -->
                                                 <button class="generate-cassette-btn" id="generate-cassette-btn">
                                                     <span class="btn-icon"><img
@@ -427,7 +431,6 @@
                     </div>
                     <img class="pc-boot-image" src="image_paint/vektroid-pc-transparent.webp" alt="Retro PC" />
 
-                    <div class="pc-boot-vignette" aria-hidden="true"></div>
                 </div>
             </div>
         </section>

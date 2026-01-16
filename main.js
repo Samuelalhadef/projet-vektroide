@@ -6,14 +6,13 @@
   let windowLoaded = false;
   let finished = false;
   let startupAudio = null;
-  let userGestureBound = false;
   let readyToStart = false;
 
   function getOverlayEl() {
     return document.getElementById("xp-login-screen");
   }
 
-  function finishLoading(reason) {
+  function finishLoading() {
     if (finished) return;
     finished = true;
 
@@ -34,9 +33,6 @@
     overlay.addEventListener("transitionend", remove, { once: true });
     // Fallback in case transitionend doesn't fire (e.g. display changes).
     setTimeout(remove, 800);
-
-    // eslint-disable-next-line no-unused-vars
-    void reason;
   }
 
   function checkReady() {
@@ -102,14 +98,14 @@
   if (overlay) {
     overlay.addEventListener("click", () => {
       if (readyToStart) {
-        finishLoading("user-click");
+        finishLoading();
       }
     });
   }
 
   // Safety net: never trap the user forever.
   setTimeout(() => {
-    if (!finished) finishLoading("timeout");
+    if (!finished) finishLoading();
   }, 45000);
 })();
 
@@ -118,6 +114,7 @@
            ============================================ */
 (function () {
   const starsContainer = document.getElementById("stars");
+  if (!starsContainer) return;
   const numStars = 150;
 
   for (let i = 0; i < numStars; i++) {
@@ -130,6 +127,29 @@
     star.style.animationDelay = Math.random() * 3 + "s";
     star.style.animationDuration = Math.random() * 2 + 2 + "s";
     starsContainer.appendChild(star);
+  }
+})();
+
+/* ============================================
+           FLOOR STARS (CHECKERBOARD)
+           ============================================ */
+(function () {
+  const floorStars = document.getElementById("floor-stars");
+  if (!floorStars) return;
+
+  const starCount = 26;
+
+  for (let i = 0; i < starCount; i++) {
+    const star = document.createElement("div");
+    star.className = "floor-star";
+    star.style.setProperty("--x", Math.random() * 100 + "%");
+    star.style.setProperty("--y", 10 + Math.random() * 55 + "%");
+    const size = 6 + Math.random() * 10;
+    star.style.setProperty("--size", size + "px");
+    const drift = 4 + Math.random() * 4;
+    star.style.setProperty("--drift", drift + "s");
+    star.style.animationDelay = Math.random() * 4 + "s";
+    floorStars.appendChild(star);
   }
 })();
 
@@ -759,6 +779,21 @@
   const stickersLayer = document.getElementById("stickers-layer");
   const statusEl = document.getElementById("paint-status");
   const coordsEl = document.getElementById("paint-coords");
+  const generateArtBtn = document.getElementById("generate-art-btn");
+
+  function setStatus(text) {
+    if (statusEl) statusEl.textContent = text;
+  }
+
+  function clearSelection(selector) {
+    document.querySelectorAll(selector).forEach((el) => {
+      el.classList.remove("selected");
+    });
+  }
+
+  function setCursor(value) {
+    if (canvas) canvas.style.cursor = value;
+  }
 
   // Color palette - vaporwave + classic Paint colors
   const colors = [
@@ -838,17 +873,26 @@
 
   let currentBgColor = "#ff71ce"; // Pink vaporwave default (so turquoise text is visible)
   let selectedSticker = null;
+  let renderMode = "default";
 
   // Setup canvas size
   function resizeCanvas() {
     const container = canvas.parentElement;
     canvas.width = container.clientWidth - 8;
-    canvas.height = 400;
-    drawCanvas();
+    canvas.height = 240;
+    renderCanvas();
+  }
+
+  function renderCanvas() {
+    if (renderMode === "art") {
+      renderProceduralArt();
+      return;
+    }
+    renderDefaultCanvas();
   }
 
   // Draw canvas with background and default text
-  function drawCanvas() {
+  function renderDefaultCanvas() {
     // Background
     ctx.fillStyle = currentBgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -886,7 +930,77 @@
     ctx.shadowBlur = 0;
   }
 
-  // Check if color is light (moved before drawCanvas uses it)
+  function hslToRgb(h, s, l) {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+
+    if (h >= 0 && h < 60) {
+      r = c;
+      g = x;
+    } else if (h >= 60 && h < 120) {
+      r = x;
+      g = c;
+    } else if (h >= 120 && h < 180) {
+      g = c;
+      b = x;
+    } else if (h >= 180 && h < 240) {
+      g = x;
+      b = c;
+    } else if (h >= 240 && h < 300) {
+      r = x;
+      b = c;
+    } else {
+      r = c;
+      b = x;
+    }
+
+    return [
+      Math.round((r + m) * 255),
+      Math.round((g + m) * 255),
+      Math.round((b + m) * 255),
+    ];
+  }
+
+  function renderProceduralArt() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const img = ctx.createImageData(w, h);
+    const data = img.data;
+    const seed = Math.random() * 1000;
+    const freqA = 0.012 + Math.random() * 0.01;
+    const freqB = 0.016 + Math.random() * 0.012;
+    const freqC = 0.02 + Math.random() * 0.015;
+
+    for (let y = 0; y < h; y++) {
+      const ny = y / h - 0.5;
+      for (let x = 0; x < w; x++) {
+        const nx = x / w - 0.5;
+        const wave =
+          Math.sin((x + seed) * freqA) +
+          Math.cos((y - seed) * freqB) +
+          Math.sin((x + y) * freqC + seed * 0.02);
+        const swirl = Math.sin(6 * Math.hypot(nx, ny) + seed * 0.01);
+        const mix = (wave + swirl) * 0.5;
+        const hue = (mix * 140 + x * 0.15 + y * 0.12 + seed) % 360;
+        const sat = 0.75;
+        const light = 0.5 + 0.15 * Math.sin(mix * 3);
+        const [r, g, b] = hslToRgb(hue, sat, light);
+        const idx = (y * w + x) * 4;
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // Check if color is light (used by the default canvas render)
   function isLightColor(color) {
     const hex = color.replace("#", "");
     const r = parseInt(hex.substr(0, 2), 16);
@@ -905,15 +1019,14 @@
 
     colorDiv.addEventListener("click", () => {
       // Remove selected from all
-      document
-        .querySelectorAll(".paint-color")
-        .forEach((c) => c.classList.remove("selected"));
+      clearSelection(".paint-color");
       colorDiv.classList.add("selected");
       currentBgColor = color;
 
       // Redraw canvas with new background and text
-      drawCanvas();
-      statusEl.textContent = "背景色変更 Background changed";
+      renderMode = "default";
+      renderCanvas();
+      setStatus("背景色変更 Background changed");
     });
 
     colorPalette.appendChild(colorDiv);
@@ -933,19 +1046,66 @@
     stickerDiv.appendChild(img);
 
     stickerDiv.addEventListener("click", () => {
-      document
-        .querySelectorAll(".paint-sticker")
-        .forEach((s) => s.classList.remove("selected"));
+      clearSelection(".paint-sticker");
       stickerDiv.classList.add("selected");
       selectedSticker = sticker;
-      statusEl.textContent = "クリックして配置 Click to place: " + sticker.name;
-      canvas.style.cursor = "copy";
+      setStatus("クリックして配置 Click to place: " + sticker.name);
+      setCursor("copy");
     });
 
     stickersPanel.appendChild(stickerDiv);
   });
 
+  if (generateArtBtn) {
+    generateArtBtn.addEventListener("click", () => {
+      renderMode = "art";
+      renderCanvas();
+      setStatus("アート生成完了 Art generated!");
+      setCursor("crosshair");
+    });
+  }
+
   // Place sticker on canvas click
+  let dragSticker = null;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+
+  function getCanvasLocalXY(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }
+
+  function startStickerDrag(stickerEl, e) {
+    dragSticker = stickerEl;
+    dragSticker.classList.add("dragging");
+    dragSticker.setPointerCapture?.(e.pointerId);
+
+    const local = getCanvasLocalXY(e.clientX, e.clientY);
+    dragOffsetX = local.x - (parseFloat(dragSticker.style.left) || 0);
+    dragOffsetY = local.y - (parseFloat(dragSticker.style.top) || 0);
+    e.stopPropagation();
+  }
+
+  function stopStickerDrag() {
+    if (!dragSticker) return;
+    dragSticker.classList.remove("dragging");
+    dragSticker = null;
+  }
+
+  // Single document-level drag handlers (avoid adding listeners per sticker)
+  document.addEventListener("pointermove", (e) => {
+    if (!dragSticker) return;
+    const local = getCanvasLocalXY(e.clientX, e.clientY);
+    dragSticker.style.left = local.x - dragOffsetX + "px";
+    dragSticker.style.top = local.y - dragOffsetY + "px";
+  });
+
+  document.addEventListener("pointerup", stopStickerDrag);
+  document.addEventListener("pointercancel", stopStickerDrag);
+
   canvas.addEventListener("click", (e) => {
     if (!selectedSticker) return;
 
@@ -970,36 +1130,18 @@
     stickerEl.dataset.src = selectedSticker.src;
 
     // Make sticker draggable
-    let isDragging = false;
-    let offsetX, offsetY;
-
-    stickerEl.addEventListener("mousedown", (e) => {
-      isDragging = true;
-      stickerEl.classList.add("dragging");
-      offsetX = e.clientX - stickerEl.offsetLeft;
-      offsetY = e.clientY - stickerEl.offsetTop;
-      e.stopPropagation();
-    });
-
-    document.addEventListener("mousemove", (e) => {
-      if (!isDragging) return;
-      stickerEl.style.left = e.clientX - offsetX + "px";
-      stickerEl.style.top = e.clientY - offsetY + "px";
-    });
-
-    document.addEventListener("mouseup", () => {
-      isDragging = false;
-      stickerEl.classList.remove("dragging");
-    });
+    stickerEl.addEventListener("pointerdown", (ev) =>
+      startStickerDrag(stickerEl, ev)
+    );
 
     // Double click to remove
     stickerEl.addEventListener("dblclick", () => {
       stickerEl.remove();
-      statusEl.textContent = "ステッカー削除 Sticker removed";
+      setStatus("ステッカー削除 Sticker removed");
     });
 
     stickersLayer.appendChild(stickerEl);
-    statusEl.textContent = "ステッカー配置完了 Sticker placed!";
+    setStatus("ステッカー配置完了 Sticker placed!");
   });
 
   // Track mouse position
@@ -1150,10 +1292,6 @@
   let slideAnim = null;
   let resizeObserver = null;
 
-  function clamp01(x) {
-    return Math.min(1, Math.max(0, x));
-  }
-
   function worldPointFromCanvasPx(px, py, targetZ) {
     if (!genCamera || !cassetteGenCanvas) return null;
 
@@ -1180,7 +1318,7 @@
     const slotRect = slotEl.getBoundingClientRect();
     const canvasRect = cassetteGenCanvas.getBoundingClientRect();
     const px = slotRect.left + slotRect.width / 2 - canvasRect.left;
-    const py = slotRect.top + slotRect.height / 2 - canvasRect.top;
+    const py = slotRect.top + slotRect.height / 2 - canvasRect.top + 80;
 
     // Cassette sits near z~0 in this generator scene.
     return worldPointFromCanvasPx(px, py, 0);
@@ -1202,7 +1340,7 @@
     genScene = new THREE.Scene();
     genScene.background = null;
 
-    genCamera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+    genCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 50);
     genCamera.position.set(0, 0.75, 6.2);
     genCamera.lookAt(0, 0.1, 0);
 
@@ -1402,7 +1540,7 @@
     ensureCassette3D();
     if (!cassetteGroup) {
       paintWindow?.classList.remove("printing");
-      statusEl.textContent = "WEBGL ERROR (cassette preview unavailable)";
+      setStatus("WEBGL ERROR (cassette preview unavailable)");
       generateBtn.disabled = false;
       generateBtn.style.opacity = "1";
       isGenerating = false;
@@ -1442,12 +1580,6 @@
     genRaf = requestAnimationFrame(genLoop);
   }
 
-  function genStop() {
-    genIsRunning = false;
-    if (genRaf) cancelAnimationFrame(genRaf);
-    genRaf = 0;
-  }
-
   function genLoop(now) {
     if (
       !genIsRunning ||
@@ -1485,7 +1617,7 @@
       if (p >= 1) {
         slideAnim = null;
         paintWindow?.classList.remove("printing");
-        statusEl.textContent = "カセット完成! Cassette created!";
+        setStatus("カセット完成! Cassette created!");
         generateBtn.disabled = false;
         generateBtn.style.opacity = "1";
         isGenerating = false;
@@ -1505,7 +1637,7 @@
     isGenerating = true;
 
     // Update status
-    statusEl.textContent = "カセット生成中... Generating cassette...";
+    setStatus("カセット生成中... Generating cassette...");
 
     // Disable button
     generateBtn.disabled = true;
@@ -1930,7 +2062,6 @@
   let analyser = null;
   let analyserData = null;
   let audioSource = null;
-  let vizRaf = 0;
 
   function ensureAudioGraph() {
     if (audioCtx && analyser && audioSource) return;

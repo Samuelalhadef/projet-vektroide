@@ -2,8 +2,6 @@
   --vapor-pink: #ff71ce;
   --vapor-cyan: #01cdfe;
   --vapor-purple: #b967ff;
-  --vapor-blue: #05ffa1;
-  --vapor-yellow: #fffb96;
   --vapor-dark: #1a0a2e;
   --vapor-darker: #0d0221;
 }
@@ -34,13 +32,20 @@
            VAPORWAVE OVERLAY EFFECTS
            ============================================ */
 
-/* CRT Scanlines */
-.crt-overlay {
+/* Shared overlay positioning */
+.crt-overlay,
+.vhs-overlay,
+.vignette {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  pointer-events: none;
+}
+
+/* CRT Scanlines */
+.crt-overlay {
   background: repeating-linear-gradient(
     0deg,
     rgba(0, 0, 0, 0.15),
@@ -54,12 +59,6 @@
 
 /* VHS Tracking Effect */
 .vhs-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
   z-index: 9997;
   background: linear-gradient(
     180deg,
@@ -80,27 +79,8 @@
   }
 }
 
-/* Chromatic Aberration */
-.chromatic-layer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 9996;
-  mix-blend-mode: screen;
-  opacity: 0.3;
-}
-
 /* Vignette */
 .vignette {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
   z-index: 9995;
   box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.9);
 }
@@ -177,12 +157,12 @@
   box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.3);
   margin-left: -5px;
   user-select: none;
+}
 
-  img {
-    width: 32px;
-    height: 32px;
-    image-rendering: pixelated;
-  }
+.start-btn img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
 }
 
 .xp-nav-links {
@@ -201,46 +181,6 @@
 
 .xp-nav-links a:hover {
   text-decoration: underline;
-}
-
-/* ============================================
-           FLOATING DECORATIVE ELEMENTS
-           ============================================ */
-.floating-element {
-  position: fixed;
-  pointer-events: none;
-  z-index: 100;
-  opacity: 0.6;
-  animation: floatAround 20s ease-in-out infinite;
-}
-
-.floating-palm {
-  font-size: 4rem;
-  filter: drop-shadow(0 0 20px var(--vapor-cyan));
-}
-
-.floating-statue {
-  font-size: 3rem;
-  filter: drop-shadow(0 0 15px var(--vapor-pink));
-}
-
-@keyframes floatAround {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-
-  25% {
-    transform: translateY(-20px) rotate(5deg);
-  }
-
-  50% {
-    transform: translateY(0) rotate(0deg);
-  }
-
-  75% {
-    transform: translateY(20px) rotate(-5deg);
-  }
 }
 
 /* ============================================
@@ -478,14 +418,10 @@ section {
   letter-spacing: 10px;
   background: linear-gradient(to bottom, #00ffff, #ff00cc);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 4px 4px 0px rgba(255, 0, 204, 0.5);
   animation: pulse 2s infinite;
-}
-
-.glitch-text::before,
-.glitch-text::after {
-  content: none;
 }
 
 @keyframes pulse {
@@ -566,28 +502,12 @@ section {
   }
 }
 
-/* Top fade to match hero bottom fade */
-.album-top-shadow {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 35vh;
-  z-index: 15;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.5) 40%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
-
 .section-title {
   font-family: "Orbitron", sans-serif;
   font-size: 2.5rem;
   background: linear-gradient(90deg, var(--vapor-pink), var(--vapor-cyan));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: none;
   margin-top: 80px;
@@ -614,7 +534,8 @@ section {
   position: relative;
   z-index: 20;
   width: 100%;
-  margin: 0;
+  margin: 50px 0 0 50px;
+  max-width: 608px;
 }
 
 .paint-titlebar {
@@ -774,7 +695,7 @@ section {
 #paint-canvas {
   display: block;
   width: 100%;
-  height: 400px;
+  height: 192px;
   cursor: crosshair;
   image-rendering: pixelated;
 }
@@ -824,8 +745,9 @@ section {
   align-items: flex-start;
   gap: 20px;
   width: 100%;
-  justify-content: center;
-  padding: 20px;
+  justify-content: flex-start;
+  padding: 18px 20px 18px 50px;
+  margin: 0 auto;
 }
 
 /* Stage wrapper so the 3D cassette can slide out from behind Paint */
@@ -833,7 +755,8 @@ section {
   position: relative;
   display: inline-block;
   overflow: visible;
-  width: min(90vw, 800px);
+  width: min(70vw, 592px);
+  max-width: 100%;
 }
 
 /* 3D cassette canvas extends beyond the right edge */
@@ -841,55 +764,69 @@ section {
   position: absolute;
   top: 0;
   left: 0;
-  width: calc(100% + 340px);
+  width: calc(100% + 240px);
   height: 100%;
   z-index: 10;
   pointer-events: none;
 }
 
-.generate-cassette-btn {
+.generate-cassette-btn,
+.generate-art-btn {
   background: linear-gradient(180deg, #c0c0c0 0%, #a0a0a0 100%);
   border: 3px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
-  padding: 15px 20px;
+  padding: 8px 10px;
   font-family: "VT323", monospace;
-  font-size: 1.2rem;
+  font-size: 0.85rem;
   color: #000;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   transition: all 0.1s;
-  min-width: 120px;
+  min-width: 84px;
 }
 
-.generate-cassette-btn:hover {
+.generate-cassette-btn:hover,
+.generate-art-btn:hover {
   background: linear-gradient(180deg, #d0d0d0 0%, #b0b0b0 100%);
 }
 
-.generate-cassette-btn:active {
+.generate-cassette-btn:active,
+.generate-art-btn:active {
   border-color: #808080 #ffffff #ffffff #808080;
   transform: translateY(2px);
 }
 
-.generate-cassette-btn .btn-icon {
-  font-size: 2.5rem;
+.generate-art-btn {
+  background: linear-gradient(180deg, #d6d6ff 0%, #a9b0ff 100%);
+  color: #090019;
+}
+
+.generate-art-btn:hover {
+  background: linear-gradient(180deg, #e0e0ff 0%, #b7c0ff 100%);
+}
+
+.generate-cassette-btn .btn-icon,
+.generate-art-btn .btn-icon {
+  font-size: 1.6rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .cassette-icon {
-  width: 40px;
-  height: 40px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   image-rendering: pixelated;
 }
 
-.generate-cassette-btn .btn-text {
+.generate-cassette-btn .btn-text,
+.generate-art-btn .btn-text {
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.05;
 }
 
 /* (Old DOM cassette styles removed — cassette is now rendered in 3D) */
@@ -1064,11 +1001,11 @@ section {
 /* Output slot on the right side of Paint window */
 .cassette-output-slot {
   position: absolute;
-  right: -15px;
+  right: -10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 200px;
+  width: 10px;
+  height: 350px;
   background: linear-gradient(90deg, #2a2a2a, #1a1a1a);
   border: 3px solid #444;
   border-left: 3px solid #666;
@@ -1250,22 +1187,6 @@ section {
     height: 300px;
   }
 
-  .vapor-navbar {
-    padding: 0 15px;
-  }
-
-  .nav-links {
-    gap: 15px;
-  }
-
-  .nav-links a {
-    font-size: 0.7rem;
-  }
-
-  .nav-jp {
-    display: none;
-  }
-
   .section-title {
     font-size: 1.8rem;
   }
@@ -1273,10 +1194,6 @@ section {
   .ui-overlay {
     flex-direction: column;
     gap: 10px;
-  }
-
-  .floating-element {
-    display: none;
   }
 }
 
@@ -1338,23 +1255,7 @@ button:focus {
   opacity: 1;
   will-change: transform;
   overflow: hidden;
-}
 
-#pc-boot {
-  position: relative;
-  width: min(86vw, 980px);
-  height: min(76vh, 680px);
-  display: grid;
-  place-items: center;
-  /* Zoom tuning knobs (JS uses offsets; origin is pure CSS) */
-  --pc-zoom-origin-x: 50%;
-  --pc-zoom-origin-y: 55%;
-  transform-origin: var(--pc-zoom-origin-x) var(--pc-zoom-origin-y);
-  will-change: transform;
-}
-
-/* Screen mask positioning (tune later) */
-#pc-boot-layer {
   --pc-screen-x: 50%;
   --pc-screen-y: 38%;
   --pc-screen-w: 37%;
@@ -1366,7 +1267,24 @@ button:focus {
   --pc-zoom-offset-y: 440px;
 
   /* Desktop scaling inside the PC screen (1 = full size). */
-  --pc-desktop-scale: 0.3;
+  --pc-desktop-scale: 0.34;
+}
+
+#pc-boot {
+  position: relative;
+  width: min(86vw, 980px);
+  height: auto;
+  max-height: 76vh;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  /* Zoom tuning knobs (JS uses offsets; origin is pure CSS) */
+  --pc-zoom-origin-x: 50%;
+  --pc-zoom-origin-y: 55%;
+  transform-origin: var(--pc-zoom-origin-x) var(--pc-zoom-origin-y);
+  will-change: transform;
+  justify-self: center;
+  align-self: center;
 }
 
 /* Screen starts "off" (black). JS toggles .is-screen-on (no fading). */
@@ -1394,14 +1312,6 @@ button:focus {
 #pc-boot-layer.is-screen-only .pc-screen-mask {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28),
     0 0 40px rgba(1, 205, 254, 0.22), 0 0 40px rgba(255, 113, 206, 0.16);
-}
-
-.pc-boot-vignette {
-  position: absolute;
-  inset: -20%;
-  pointer-events: none;
-  background: transparent;
-  display: none;
 }
 
 /* ============================================
@@ -1529,11 +1439,6 @@ button:focus {
   }
 }
 
-/* Screen brightness pulse */
-.pc-screen-mask {
-  animation: screenPulse 4s ease-in-out infinite;
-}
-
 @keyframes screenPulse {
   0%,
   100% {
@@ -1608,6 +1513,7 @@ button:focus {
   isolation: isolate;
   background: #020007;
   z-index: 1;
+  animation: screenPulse 4s ease-in-out infinite;
 }
 
 /* Remove the heavy glow pseudo-elements (requested) */
@@ -1624,25 +1530,36 @@ button:focus {
   position: absolute;
   bottom: 0;
   left: 50%;
-  /* Bigger FOV perspective for more dramatic depth */
-  transform: translateX(-50%) perspective(600px) rotateX(75deg) translateY(10vh)
-    scale(1.3);
-  width: 450%;
-  height: 120%;
-  /* Pure black and white checkerboard - brighter and more reflective */
-  background-color: #000000;
+  /* Wider FOV perspective for a clearer checkerboard */
+  transform: translateX(-50%) perspective(320px) rotateX(50deg) translateY(18vh)
+    scale(1.35);
+  width: 420%;
+  height: 130%;
+  overflow: hidden;
+  /* True black & white checkerboard */
+  background-color: #000;
   background-image: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.95) 50%,
-      transparent 50%
+      45deg,
+      #ffffff 25%,
+      transparent 25%,
+      transparent 75%,
+      #ffffff 75%,
+      #ffffff
     ),
-    linear-gradient(90deg, transparent 50%, rgba(255, 255, 255, 0.95) 50%);
-  background-size: 160px 80px;
-  background-position: 0 0, 0 80px;
+    linear-gradient(
+      45deg,
+      #ffffff 25%,
+      transparent 25%,
+      transparent 75%,
+      #ffffff 75%,
+      #ffffff
+    );
+  background-size: 180px 180px;
+  background-position: 0 0, 90px 90px;
   z-index: 0;
   transform-origin: center bottom;
   /* Move "forward" (toward the camera) */
-  animation: floorMoveForward 1.8s linear infinite;
+  animation: floorMoveForward 2.3s linear infinite;
   /* Gradual fade from bottom to top - fades out much further back */
   mask-image: linear-gradient(
     to top,
@@ -1667,27 +1584,46 @@ button:focus {
     rgba(0, 0, 0, 0) 100%
   );
   /* Add reflective shine effect */
-  filter: brightness(1.3) contrast(1.15);
+  filter: brightness(1.35) contrast(1.2);
+  isolation: isolate;
 }
 
 @keyframes floorMoveForward {
   0% {
-    background-position: 0 0, 80px 80px;
+    background-position: 0 0, 90px 90px;
   }
   100% {
-    background-position: 0 160px, 80px 240px;
+    background-position: 0 180px, 90px 270px;
   }
 }
 
-/* Remove extra floor overlays (requested) */
-.vaporwave-floor::before,
+/* Big specular light source sweep */
 .vaporwave-floor::after {
-  content: none !important;
-  display: none !important;
+  content: "";
+  position: absolute;
+  inset: -20% -10% 0 -10%;
+  background: radial-gradient(
+    circle at 50% 12%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.18) 28%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: floorLightSweep 6s ease-in-out infinite;
+  z-index: 2;
 }
 
-.floor-reflection {
-  display: none !important;
+@keyframes floorLightSweep {
+  0%,
+  100% {
+    transform: translateX(-8%) translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(8%) translateY(-4%);
+    opacity: 1;
+  }
 }
 
 /* Reflection/shine effect */
@@ -1706,7 +1642,9 @@ button:focus {
     rgba(255, 200, 255, 0.2) 100%
   );
   pointer-events: none;
+  mix-blend-mode: screen;
   animation: reflectionPulse 3s ease-in-out infinite;
+  z-index: 1;
 }
 
 @keyframes reflectionPulse {
@@ -1716,6 +1654,77 @@ button:focus {
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* Checkerboard stars that skim and reflect on the floor */
+.floor-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.floor-star {
+  position: absolute;
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  left: var(--x, 50%);
+  top: var(--y, 20%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.65) 35%,
+    rgba(1, 205, 254, 0.15) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8),
+    0 0 30px rgba(255, 255, 255, 0.45), 0 0 50px rgba(1, 205, 254, 0.3);
+  animation: floorStarDrift var(--drift, 5s) linear infinite,
+    floorStarPulse 2.4s ease-in-out infinite;
+  transform: translateZ(0);
+}
+
+.floor-star::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  width: 140%;
+  height: 220%;
+  transform: translateX(-50%) scaleY(-1);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.15) 45%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  opacity: 0.35;
+  filter: blur(8px);
+}
+
+@keyframes floorStarDrift {
+  0% {
+    transform: translateY(-40px) scale(0.6);
+    opacity: 0.2;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(280px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes floorStarPulse {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+  }
+  50% {
+    filter: brightness(1.4) drop-shadow(0 0 16px rgba(255, 255, 255, 0.8));
   }
 }
 
@@ -1851,7 +1860,7 @@ button:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: start;
   position: relative;
   width: 100%;
   height: 100%;
@@ -1867,19 +1876,16 @@ button:focus {
 
 /* Inside-screen layout tightening (so everything fits cleanly) */
 .pc-screen-mask .paint-and-cassette-container {
-  justify-content: center;
   gap: 10px;
   /* Balanced padding for better centering */
-  padding: 12px 20px;
+  padding: 10px 16px;
 }
 
 .pc-screen-mask .paint-stage {
-  width: max(480px, 100%);
+  width: 100%;
 }
 
 /* Reduce extra right-side canvas extension so the cassette stays in-frame */
 .pc-screen-mask #cassette-gen-canvas {
-  width: calc(100% + 150px);
+  width: calc(100% + 120px);
 }
-
-/* Ensure overlays stay above the desktop */
