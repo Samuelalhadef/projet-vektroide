@@ -43,6 +43,8 @@
     if (readyToStart) return;
     if (windowLoaded && expectedModels.size === 0) {
       readyToStart = true;
+      // Scroll to top before user clicks
+      window.scrollTo({ top: 0, behavior: "smooth" });
       // Update loading text to indicate user can click
       const loadingText = document.querySelector(".xp-loading-text");
       if (loadingText) {
@@ -533,32 +535,56 @@
         heroModelRoot.visible = true;
 
         // Reveal the model line-by-line (mask only covers the model canvas)
+        // Wait for login screen fade-out to complete before starting
         if (modelRevealEl) {
-          modelRevealEl.classList.add("is-revealing");
+          const loginScreen = document.getElementById("xp-login-screen");
+          const startMaskReveal = () => {
+            modelRevealEl.classList.add("is-revealing");
 
-          const durationMs = 1200;
-          const start = performance.now();
-          const stepPx = 6; // controls "line-by-line" feel
+            const durationMs = 1200;
+            const start = performance.now();
+            const stepPx = 6; // controls "line-by-line" feel
 
-          const tick = (now) => {
-            const t = Math.max(0, Math.min(1, (now - start) / durationMs));
-            const h = Math.max(1, modelRevealEl.clientHeight);
-            const revealed = Math.floor((h * t) / stepPx) * stepPx;
-            const topPx = Math.max(0, Math.round(h - revealed));
-            modelRevealEl.style.clipPath = `inset(${topPx}px 0px 0px 0px)`;
+            const tick = (now) => {
+              const t = Math.max(0, Math.min(1, (now - start) / durationMs));
+              const h = Math.max(1, modelRevealEl.clientHeight);
+              const revealed = Math.floor((h * t) / stepPx) * stepPx;
+              const topPx = Math.max(0, Math.round(h - revealed));
+              modelRevealEl.style.clipPath = `inset(${topPx}px 0px 0px 0px)`;
 
-            if (t < 1) {
-              requestAnimationFrame(tick);
-            } else {
-              modelRevealEl.style.clipPath = "inset(0px 0px 0px 0px)";
-              // fade scanlines out shortly after full reveal
-              setTimeout(
-                () => modelRevealEl.classList.remove("is-revealing"),
-                350
-              );
-            }
+              if (t < 1) {
+                requestAnimationFrame(tick);
+              } else {
+                modelRevealEl.style.clipPath = "inset(0px 0px 0px 0px)";
+                // fade scanlines out shortly after full reveal
+                setTimeout(
+                  () => modelRevealEl.classList.remove("is-revealing"),
+                  350
+                );
+              }
+            };
+            requestAnimationFrame(tick);
           };
-          requestAnimationFrame(tick);
+
+          // Check if login screen is already hidden or hiding
+          if (
+            !loginScreen ||
+            loginScreen.classList.contains("xp-login--hiding")
+          ) {
+            // Wait for the CSS transition duration (420ms) + a small buffer
+            setTimeout(startMaskReveal, 450);
+          } else {
+            // If login screen hasn't started hiding yet, wait for it
+            const checkAndStart = setInterval(() => {
+              if (
+                !loginScreen ||
+                loginScreen.classList.contains("xp-login--hiding")
+              ) {
+                clearInterval(checkAndStart);
+                setTimeout(startMaskReveal, 450);
+              }
+            }, 50);
+          }
         }
 
         // Mark hero model as loaded
@@ -2485,13 +2511,23 @@
 
   if (!navbar || !tvTransitionWrapper || !playerSection) return;
 
+  let lastScrollY = window.scrollY;
+  let isScrollingUp = false;
+
   function updateNavbarVisibility() {
+    const currentScrollY = window.scrollY;
+    isScrollingUp = currentScrollY < lastScrollY;
+    lastScrollY = currentScrollY;
+
     const tvRect = tvTransitionWrapper.getBoundingClientRect();
     const playerRect = playerSection.getBoundingClientRect();
 
-    // Hide navbar when tv-transition-wrapper (computer section) is in view
-    // Show navbar when player-section (cassette player) is in view
-    if (tvRect.top <= 0 && tvRect.bottom > window.innerHeight * 0.3) {
+    // Always show navbar if scrolling up
+    if (isScrollingUp) {
+      navbar.classList.remove("navbar-hidden");
+    }
+    // Hide navbar when tv-transition-wrapper (computer section) is in view and scrolling down
+    else if (tvRect.top <= 0 && tvRect.bottom > window.innerHeight * 0.3) {
       // In computer section - hide navbar
       navbar.classList.add("navbar-hidden");
     } else if (playerRect.top <= window.innerHeight * 0.5) {

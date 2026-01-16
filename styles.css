@@ -1334,12 +1334,7 @@ button:focus {
   z-index: 1;
   display: grid;
   place-items: center;
-  background: radial-gradient(
-    circle at 50% 40%,
-    rgba(10, 12, 22, 0.65) 0%,
-    rgba(0, 0, 0, 0.92) 58%,
-    #000 100%
-  );
+  background: transparent;
   opacity: 1;
   will-change: transform;
   overflow: hidden;
@@ -1353,7 +1348,7 @@ button:focus {
   place-items: center;
   /* Zoom tuning knobs (JS uses offsets; origin is pure CSS) */
   --pc-zoom-origin-x: 50%;
-  --pc-zoom-origin-y: 52%;
+  --pc-zoom-origin-y: 55%;
   transform-origin: var(--pc-zoom-origin-x) var(--pc-zoom-origin-y);
   will-change: transform;
 }
@@ -1362,7 +1357,7 @@ button:focus {
 #pc-boot-layer {
   --pc-screen-x: 50%;
   --pc-screen-y: 38%;
-  --pc-screen-w: 32%;
+  --pc-screen-w: 37%;
   --pc-screen-h: 48%;
   --pc-screen-radius: 20px;
 
@@ -1371,7 +1366,7 @@ button:focus {
   --pc-zoom-offset-y: 440px;
 
   /* Desktop scaling inside the PC screen (1 = full size). */
-  --pc-desktop-scale: 0.42;
+  --pc-desktop-scale: 0.3;
 }
 
 /* Screen starts "off" (black). JS toggles .is-screen-on (no fading). */
@@ -1393,7 +1388,7 @@ button:focus {
 
 /* When fully zoomed, hide the PC body and keep only screen outline + bars */
 #pc-boot-layer.is-screen-only {
-  background: #000;
+  background: transparent;
 }
 
 #pc-boot-layer.is-screen-only .pc-screen-mask {
@@ -1405,12 +1400,8 @@ button:focus {
   position: absolute;
   inset: -20%;
   pointer-events: none;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.35) 55%,
-    rgba(0, 0, 0, 0.85) 100%
-  );
+  background: transparent;
+  display: none;
 }
 
 /* ============================================
@@ -1633,34 +1624,50 @@ button:focus {
   position: absolute;
   bottom: 0;
   left: 50%;
-  transform: translateX(-50%) perspective(900px) rotateX(72deg) translateY(12vh)
-    scale(1.15);
-  width: 340%;
-  height: 78%;
-  /* Big checkerboard with a softer palette */
-  background-color: #060012;
+  /* Bigger FOV perspective for more dramatic depth */
+  transform: translateX(-50%) perspective(600px) rotateX(75deg) translateY(10vh)
+    scale(1.3);
+  width: 450%;
+  height: 120%;
+  /* Pure black and white checkerboard - brighter and more reflective */
+  background-color: #000000;
   background-image: linear-gradient(
-      45deg,
-      rgba(255, 113, 206, 0.35) 25%,
-      transparent 25%,
-      transparent 75%,
-      rgba(255, 113, 206, 0.35) 75%,
-      rgba(255, 113, 206, 0.35)
+      90deg,
+      rgba(255, 255, 255, 0.95) 50%,
+      transparent 50%
     ),
-    linear-gradient(
-      45deg,
-      rgba(1, 205, 254, 0.22) 25%,
-      transparent 25%,
-      transparent 75%,
-      rgba(1, 205, 254, 0.22) 75%,
-      rgba(1, 205, 254, 0.22)
-    );
-  background-size: 160px 160px;
-  background-position: 0 0, 80px 80px;
+    linear-gradient(90deg, transparent 50%, rgba(255, 255, 255, 0.95) 50%);
+  background-size: 160px 80px;
+  background-position: 0 0, 0 80px;
   z-index: 0;
   transform-origin: center bottom;
   /* Move "forward" (toward the camera) */
   animation: floorMoveForward 1.8s linear infinite;
+  /* Gradual fade from bottom to top - fades out much further back */
+  mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.9) 15%,
+    rgba(0, 0, 0, 0.7) 30%,
+    rgba(0, 0, 0, 0.5) 45%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.15) 75%,
+    rgba(0, 0, 0, 0.05) 85%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.9) 15%,
+    rgba(0, 0, 0, 0.7) 30%,
+    rgba(0, 0, 0, 0.5) 45%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.15) 75%,
+    rgba(0, 0, 0, 0.05) 85%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  /* Add reflective shine effect */
+  filter: brightness(1.3) contrast(1.15);
 }
 
 @keyframes floorMoveForward {
@@ -1807,6 +1814,7 @@ button:focus {
   position: absolute;
   top: 50%;
   left: 50%;
+  word-break: keep-all;
   transform: translate(-50%, -50%);
   font-family: "VT323", monospace;
   font-size: 3rem;
@@ -1859,19 +1867,19 @@ button:focus {
 
 /* Inside-screen layout tightening (so everything fits cleanly) */
 .pc-screen-mask .paint-and-cassette-container {
-  justify-content: flex-start;
-  gap: 14px;
-  /* Slight left bias to leave room for the cassette on the right */
-  padding: 12px 24px 12px 16px;
+  justify-content: center;
+  gap: 10px;
+  /* Balanced padding for better centering */
+  padding: 12px 20px;
 }
 
 .pc-screen-mask .paint-stage {
-  width: min(560px, 100%);
+  width: max(480px, 100%);
 }
 
 /* Reduce extra right-side canvas extension so the cassette stays in-frame */
 .pc-screen-mask #cassette-gen-canvas {
-  width: calc(100% + 220px);
+  width: calc(100% + 150px);
 }
 
 /* Ensure overlays stay above the desktop */
