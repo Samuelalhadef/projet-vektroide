@@ -957,7 +957,7 @@ section {
 
 .machine-title {
   font-family: "VT323", monospace;
-  font-size: 2rem;
+  font-size: 0.6rem;
   color: #0f0;
   text-shadow: 0 0 10px #0f0;
   margin-bottom: 20px;
@@ -1001,7 +1001,7 @@ section {
   transform: translate(-50%, -50%);
   font-family: "VT323", monospace;
   color: #fff;
-  font-size: 1rem;
+  font-size: 0.6rem;
   text-shadow: 1px 1px 0 #000;
 }
 
@@ -1292,6 +1292,7 @@ button:focus {
   align-items: center;
   padding-top: 68px;
   overflow: hidden;
+  isolation: isolate;
   background: radial-gradient(
     circle at 50% 40%,
     rgba(185, 103, 255, 0.15) 0%,
@@ -2053,184 +2054,26 @@ button:focus {
   height: 130%;
   overflow: hidden;
   background-color: #000;
-  background-image: linear-gradient(
-      45deg,
-      #ffffff 25%,
-      transparent 25%,
-      transparent 75%,
-      #ffffff 75%,
-      #ffffff
-    ),
-    linear-gradient(
-      45deg,
-      #ffffff 25%,
-      transparent 25%,
-      transparent 75%,
-      #ffffff 75%,
-      #ffffff
-    );
-  background-size: 180px 180px;
-  background-position: 0 0, 90px 90px;
+  /* Animated black/white checkerboard (no stars/reflections/sweep).
+     Use a crisp-edge SVG tile to avoid 1px seams during transforms/animation. */
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='160'%20shape-rendering='crispEdges'%3E%3Crect%20width='80'%20height='80'%20fill='%23fff'/%3E%3Crect%20x='80'%20y='80'%20width='80'%20height='80'%20fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  background-position: 0 0;
+  background-repeat: repeat;
   z-index: 0;
   transform-origin: center bottom;
-  animation: floorMoveForward 2.3s linear infinite;
-  mask-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.9) 15%,
-    rgba(0, 0, 0, 0.7) 30%,
-    rgba(0, 0, 0, 0.5) 45%,
-    rgba(0, 0, 0, 0.3) 60%,
-    rgba(0, 0, 0, 0.15) 75%,
-    rgba(0, 0, 0, 0.05) 85%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.9) 15%,
-    rgba(0, 0, 0, 0.7) 30%,
-    rgba(0, 0, 0, 0.5) 45%,
-    rgba(0, 0, 0, 0.3) 60%,
-    rgba(0, 0, 0, 0.15) 75%,
-    rgba(0, 0, 0, 0.05) 85%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  filter: brightness(1.35) contrast(1.2);
-  isolation: isolate;
+  pointer-events: none;
+  filter: none;
+  animation: floorMoveForward 2.6s linear infinite;
+  will-change: background-position;
 }
 
 @keyframes floorMoveForward {
   0% {
-    background-position: 0 0, 90px 90px;
+    background-position: 0 0;
   }
   100% {
-    background-position: 0 180px, 90px 270px;
-  }
-}
-
-.vaporwave-floor::after {
-  content: "";
-  position: absolute;
-  inset: -20% -10% 0 -10%;
-  background: radial-gradient(
-    circle at 50% 12%,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(255, 255, 255, 0.18) 28%,
-    rgba(255, 255, 255, 0) 62%
-  );
-  mix-blend-mode: screen;
-  pointer-events: none;
-  animation: floorLightSweep 6s ease-in-out infinite;
-  z-index: 2;
-}
-
-@keyframes floorLightSweep {
-  0%,
-  100% {
-    transform: translateX(-8%) translateY(0);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translateX(8%) translateY(-4%);
-    opacity: 1;
-  }
-}
-
-.floor-reflection {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(255, 255, 255, 0.05) 40%,
-    rgba(255, 0, 255, 0.1) 60%,
-    rgba(255, 255, 255, 0.15) 80%,
-    rgba(255, 200, 255, 0.2) 100%
-  );
-  pointer-events: none;
-  mix-blend-mode: screen;
-  animation: reflectionPulse 3s ease-in-out infinite;
-  z-index: 1;
-}
-
-@keyframes reflectionPulse {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.floor-stars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.floor-star {
-  position: absolute;
-  width: var(--size, 8px);
-  height: var(--size, 8px);
-  left: var(--x, 50%);
-  top: var(--y, 20%);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0.65) 35%,
-    rgba(1, 205, 254, 0.15) 70%,
-    transparent 100%
-  );
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8),
-    0 0 30px rgba(255, 255, 255, 0.45), 0 0 50px rgba(1, 205, 254, 0.3);
-  animation: floorStarDrift var(--drift, 5s) linear infinite,
-    floorStarPulse 2.4s ease-in-out infinite;
-  transform: translateZ(0);
-}
-
-.floor-star::after {
-  content: "";
-  position: absolute;
-  top: calc(100% + 14px);
-  left: 50%;
-  width: 140%;
-  height: 220%;
-  transform: translateX(-50%) scaleY(-1);
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.15) 45%,
-    rgba(255, 255, 255, 0) 70%
-  );
-  opacity: 0.35;
-  filter: blur(8px);
-}
-
-@keyframes floorStarDrift {
-  0% {
-    transform: translateY(-40px) scale(0.6);
-    opacity: 0.2;
-  }
-  10% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(280px) scale(1.2);
-    opacity: 0;
-  }
-}
-
-@keyframes floorStarPulse {
-  0%,
-  100% {
-    filter: brightness(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
-  }
-  50% {
-    filter: brightness(1.4) drop-shadow(0 0 16px rgba(255, 255, 255, 0.8));
+    background-position: 0 160px;
   }
 }
 

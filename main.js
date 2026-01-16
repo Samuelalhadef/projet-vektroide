@@ -189,6 +189,9 @@
   const ZOOM_PADDING_PCT = 0.04; // tweak: smaller -> fills more of viewport
   const ZOOM_MAX_SCALE = 12;
   const ZOOM_SCROLL_RANGE_PX = 1100; // scroll distance to fully return to normal (bigger = less sensitive)
+  // 1 = fully compensate scroll (strong parallax/sticky feel), 0 = no compensation (no parallax).
+  // Try 0.25-0.5 for a subtler effect.
+  const ZOOM_SCROLL_COMP_PCT = 0;
   const BOOT_TIMINGS = {
     screenPowerOnDelayMs: 160,
     biosLineDelayMs: prefersReducedMotion ? 10 : 120,
@@ -310,7 +313,7 @@
 
     // Keep the zoomed view stable while scrolling by compensating the scroll in Y.
     // As we ease out, we also ease out that compensation so it returns to the normal flow.
-    const startTyWithScrollComp = zoomStart.ty + deltaY;
+    const startTyWithScrollComp = zoomStart.ty + deltaY * ZOOM_SCROLL_COMP_PCT;
 
     const nextScale = lerp(zoomStart.scale, 1, eased);
     const nextTx = lerp(zoomStart.tx, 0, eased);
@@ -1200,6 +1203,14 @@
   let renderMode = "default";
   let artSnapshotCanvas = null;
 
+  // Canvas-based stickers (reliable: no overlay click/drag issues)
+  const stickerCache = new Map();
+  const placedStickers = [];
+  let nextStickerId = 1;
+  let draggingStickerId = null;
+  let dragStickerDx = 0;
+  let dragStickerDy = 0;
+
   const PAINT_CANVAS_CSS_W = 248;
   const PAINT_CANVAS_CSS_H = 100;
   const STICKER_SIZE_PX = 24;
@@ -1246,17 +1257,82 @@
     sctx.drawImage(canvas, 0, 0);
   }
 
+  function drawPlacedStickers() {
+    for (let i = 0; i < placedStickers.length; i++) {
+      const s = placedStickers[i];
+      const img = s.img;
+      if (!img || !img.complete) continue;
+      ctx.drawImage(img, s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
+    }
+  }
+
   function renderCanvas({ keepArt = true } = {}) {
     if (renderMode === "art") {
-      if (keepArt && drawArtSnapshotToCanvas()) return;
+      if (keepArt && drawArtSnapshotToCanvas()) {
+        drawPlacedStickers();
+        return;
+      }
       renderProceduralArt();
       snapshotArtFromCanvas();
+      drawPlacedStickers();
       return;
     }
 
     renderDefaultCanvas();
     // Leaving art mode should clear the stored art so it doesn't reappear later.
     artSnapshotCanvas = null;
+    drawPlacedStickers();
+  }
+
+  function ensureStickerImage(src) {
+    if (!src) return null;
+    if (stickerCache.has(src)) return stickerCache.get(src);
+    const img = new Image();
+    img.decoding = "async";
+    img.loading = "eager";
+    img.src = src;
+    img.onload = () => renderCanvas({ keepArt: true });
+    stickerCache.set(src, img);
+    return img;
+  }
+
+  function getCanvasPointFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    // When the PC zooms, the canvas is CSS-transformed (scaled/translated).
+    // Convert viewport pointer coords back into the canvas' *untransformed* CSS pixel space.
+    const cssW = canvas.clientWidth || rect.width || 1;
+    const cssH = canvas.clientHeight || rect.height || 1;
+    const scaleX = rect.width ? cssW / rect.width : 1;
+    const scaleY = rect.height ? cssH / rect.height : 1;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+      w: cssW,
+      h: cssH,
+    };
+  }
+
+  function findTopStickerAt(x, y) {
+    for (let i = placedStickers.length - 1; i >= 0; i--) {
+      const s = placedStickers[i];
+      const half = s.size / 2;
+      if (
+        x >= s.x - half &&
+        x <= s.x + half &&
+        y >= s.y - half &&
+        y <= s.y + half
+      )
+        return s;
+    }
+    return null;
+  }
+
+  function clampStickerToCanvas(sticker) {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const half = sticker.size / 2;
+    sticker.x = Math.max(half, Math.min(w - half, sticker.x));
+    sticker.y = Math.max(half, Math.min(h - half, sticker.y));
   }
 
   // Draw canvas with background and default text
@@ -1476,96 +1552,83 @@
     });
   }
 
-  // Place sticker on canvas click
-  let dragSticker = null;
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
+  // Canvas pointer interactions (place / drag / remove stickers)
+  canvas.style.touchAction = "none";
 
-  function getCanvasLocalXY(clientX, clientY) {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
-  }
+  canvas.addEventListener("pointerdown", (e) => {
+    const p = getCanvasPointFromEvent(e);
+    if (p.x < 0 || p.y < 0 || p.x > p.w || p.y > p.h) return;
 
-  function startStickerDrag(stickerEl, e) {
-    dragSticker = stickerEl;
-    dragSticker.classList.add("dragging");
-    dragSticker.setPointerCapture?.(e.pointerId);
+    const hit = findTopStickerAt(p.x, p.y);
+    if (hit) {
+      draggingStickerId = hit.id;
+      dragStickerDx = p.x - hit.x;
+      dragStickerDy = p.y - hit.y;
+      canvas.setPointerCapture?.(e.pointerId);
+      setCursor("move");
+      e.preventDefault();
+      return;
+    }
 
-    const local = getCanvasLocalXY(e.clientX, e.clientY);
-    dragOffsetX = local.x - (parseFloat(dragSticker.style.left) || 0);
-    dragOffsetY = local.y - (parseFloat(dragSticker.style.top) || 0);
-    e.stopPropagation();
-  }
-
-  function stopStickerDrag() {
-    if (!dragSticker) return;
-    dragSticker.classList.remove("dragging");
-    dragSticker = null;
-  }
-
-  // Single document-level drag handlers (avoid adding listeners per sticker)
-  document.addEventListener("pointermove", (e) => {
-    if (!dragSticker) return;
-    const local = getCanvasLocalXY(e.clientX, e.clientY);
-    dragSticker.style.left = local.x - dragOffsetX + "px";
-    dragSticker.style.top = local.y - dragOffsetY + "px";
+    // Place new sticker if one is selected
+    if (selectedSticker?.src) {
+      const img = ensureStickerImage(selectedSticker.src);
+      const s = {
+        id: nextStickerId++,
+        src: selectedSticker.src,
+        img,
+        x: p.x,
+        y: p.y,
+        size: STICKER_SIZE_PX,
+      };
+      clampStickerToCanvas(s);
+      placedStickers.push(s);
+      renderCanvas({ keepArt: true });
+      setStatus("ステッカー配置完了 Sticker placed!");
+    }
   });
 
-  document.addEventListener("pointerup", stopStickerDrag);
-  document.addEventListener("pointercancel", stopStickerDrag);
+  canvas.addEventListener("pointermove", (e) => {
+    const p = getCanvasPointFromEvent(e);
+    if (draggingStickerId != null) {
+      const s = placedStickers.find((x) => x.id === draggingStickerId);
+      if (!s) return;
+      s.x = p.x - dragStickerDx;
+      s.y = p.y - dragStickerDy;
+      clampStickerToCanvas(s);
+      renderCanvas({ keepArt: true });
+      return;
+    }
 
-  const paintCanvasContainerEl = canvas.closest(".paint-canvas-container");
-  function placeStickerAtEventPoint(e) {
-    if (!selectedSticker) return;
-    // Don't place a new sticker when interacting with an existing one.
-    if (e.target && e.target.closest?.(".canvas-sticker")) return;
+    const hit = findTopStickerAt(p.x, p.y);
+    if (hit) {
+      setCursor("move");
+    } else {
+      setCursor(selectedSticker ? "copy" : "crosshair");
+    }
+  });
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  function stopCanvasDrag() {
+    if (draggingStickerId == null) return;
+    draggingStickerId = null;
+    setCursor(selectedSticker ? "copy" : "crosshair");
+  }
 
-    if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
+  canvas.addEventListener("pointerup", stopCanvasDrag);
+  canvas.addEventListener("pointercancel", stopCanvasDrag);
 
-    const stickerEl = document.createElement("div");
-    stickerEl.className = "canvas-sticker";
-
-    const img = document.createElement("img");
-    img.src = selectedSticker.src;
-    img.alt = selectedSticker.name;
-    img.style.width = STICKER_SIZE_PX + "px";
-    img.style.height = STICKER_SIZE_PX + "px";
-    img.style.objectFit = "contain";
-    img.draggable = false;
-    stickerEl.appendChild(img);
-
-    stickerEl.style.left = x + "px";
-    stickerEl.style.top = y + "px";
-    stickerEl.dataset.src = selectedSticker.src;
-
-    // Make sticker draggable
-    stickerEl.addEventListener("pointerdown", (ev) =>
-      startStickerDrag(stickerEl, ev)
-    );
-
-    // Double click to remove
-    stickerEl.addEventListener("dblclick", () => {
-      stickerEl.remove();
+  canvas.addEventListener("dblclick", (e) => {
+    const p = getCanvasPointFromEvent(e);
+    const hit = findTopStickerAt(p.x, p.y);
+    if (!hit) return;
+    const idx = placedStickers.findIndex((x) => x.id === hit.id);
+    if (idx >= 0) {
+      placedStickers.splice(idx, 1);
+      renderCanvas({ keepArt: true });
       setStatus("ステッカー削除 Sticker removed");
-    });
-
-    stickersLayer.appendChild(stickerEl);
-    setStatus("ステッカー配置完了 Sticker placed!");
-  }
-
-  // Clicking the canvas area places a sticker (works even when stickers layer is interactive).
-  if (paintCanvasContainerEl) {
-    paintCanvasContainerEl.addEventListener("click", placeStickerAtEventPoint);
-  } else {
-    canvas.addEventListener("click", placeStickerAtEventPoint);
-  }
+      e.preventDefault();
+    }
+  });
 
   // Initialize
   resizeCanvas();
@@ -1589,13 +1652,10 @@
   // Default tool state
   enterColorsMode();
 
-  // Make stickers layer match canvas position
-  stickersLayer.style.position = "absolute";
-  stickersLayer.style.inset = "4px";
-  // Keep pointer-events: none on the layer so clicks pass through to place new stickers.
-  // Individual .canvas-sticker elements have pointer-events: auto for dragging/removal.
-  stickersLayer.style.pointerEvents = "none";
-  stickersLayer.style.touchAction = "none";
+  // Stickers are now drawn into the canvas; keep the overlay layer inert.
+  if (stickersLayer) {
+    stickersLayer.style.display = "none";
+  }
 
   // ============================================
   // CASSETTE GENERATOR - INDUSTRIAL MACHINE
@@ -1713,25 +1773,6 @@
     tempCanvas.height = canvas.height;
     const tempCtx = tempCanvas.getContext("2d");
     tempCtx.drawImage(canvas, 0, 0);
-
-    const dpr = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
-
-    const stickerElements = stickersLayer.querySelectorAll(".canvas-sticker");
-    stickerElements.forEach((stickerEl) => {
-      const x = parseInt(stickerEl.style.left) || 0;
-      const y = parseInt(stickerEl.style.top) || 0;
-      const img = stickerEl.querySelector("img");
-      if (img && img.complete) {
-        tempCtx.drawImage(
-          img,
-          (x - STICKER_HALF_PX) * dpr,
-          (y - STICKER_HALF_PX) * dpr,
-          STICKER_SIZE_PX * dpr,
-          STICKER_SIZE_PX * dpr
-        );
-      }
-    });
-
     return tempCanvas;
   }
 
@@ -1902,7 +1943,8 @@
     // Label material (updated on generation)
     cassetteLabelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const label = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.55, 0.78),
+      // Match the Paint canvas aspect ratio (248:100 ~= 2.48)
+      new THREE.PlaneGeometry(2.55, 1.03),
       cassetteLabelMat
     );
     label.position.set(0, 0.56, 0.191);
@@ -1961,16 +2003,18 @@
     // Make sure the 3D cassette exists before we try to assign its material.
     ensureCassette3D();
 
+    // Higher-res label that matches the Paint canvas aspect ratio.
+    // Paint canvas is 248x100 => aspect ~2.48.
     labelCanvas = document.createElement("canvas");
-    labelCanvas.width = 512;
-    labelCanvas.height = 160;
+    labelCanvas.width = 1024;
+    labelCanvas.height = 412;
     const ctx = labelCanvas.getContext("2d");
 
     // White paper base
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
 
-    // Draw the Paint design cropped to a wide strip
+    // Draw the Paint design scaled to the label (same aspect, so no weird stretch)
     ctx.drawImage(designCanvas, 0, 0, labelCanvas.width, labelCanvas.height);
 
     // Small border
@@ -2135,6 +2179,11 @@
     }
   }
 
+  // Allow the player "INSERT" button to use the same visual insertion.
+  VEKTROID.animateFloatingCassetteIntoPlayer = function () {
+    insertCassetteIntoPlayer();
+  };
+
   function insertCassetteIntoPlayer() {
     const state = getCassetteState();
     const cassetteEl = document.getElementById("floating-cassette-3d");
@@ -2144,46 +2193,38 @@
     state.inserted = true;
     cassetteEl.classList.add("is-inserting");
 
-    // Animate the cassette sliding into the player from the side (left)
-    const playerSection = document.getElementById("player-section");
-    const playerCanvas = document.getElementById("player-canvas");
-    if (playerSection && playerCanvas) {
-      const canvasRect = playerCanvas.getBoundingClientRect();
-      // Position cassette at the left side of the player, vertically centered
-      const startX = canvasRect.left + canvasRect.width * 0.3;
-      const startY = canvasRect.top + canvasRect.height * 0.5;
+    // True handoff: move the *same* Three.js cassette mesh into the player scene.
+    // This keeps everything in the same universe (player renderer coordinates),
+    // eliminating left-drifting due to DOM-space vs 3D-space mismatch.
+    const mesh = floatCassette;
 
-      // First move to the entry position
-      cassetteEl.style.transition =
-        "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out";
-      cassetteEl.style.left = startX + "px";
-      cassetteEl.style.top = startY + "px";
-      cassetteEl.style.transform = "translate(-50%, -50%) scale(0.6)";
+    // Stop rendering the floating cassette (we're about to reparent its mesh).
+    floatStop();
+    try {
+      if (floatScene && mesh && mesh.parent === floatScene)
+        floatScene.remove(mesh);
+    } catch (_) {}
 
-      // Then slide INTO the player (move left and shrink as if entering the slot)
-      setTimeout(() => {
-        cassetteEl.style.transition =
-          "left 400ms ease-in, top 400ms ease-in, transform 400ms ease-in, opacity 400ms ease-in";
-        cassetteEl.style.left =
-          canvasRect.left + canvasRect.width * 0.15 + "px";
-        cassetteEl.style.transform = "translate(-50%, -50%) scale(0.2)";
-        cassetteEl.style.opacity = "0";
-      }, 350);
+    cassetteEl.style.transition = "opacity 220ms ease";
+    cassetteEl.style.opacity = "0";
+
+    if (
+      window.VEKTROID &&
+      typeof window.VEKTROID.insertGeneratedTape === "function"
+    ) {
+      window.VEKTROID.insertGeneratedTape({ mesh, startX: 6, durationMs: 650 });
     }
 
-    // Hide after animation and trigger player insertion
+    // Detach from the floating system so later spawns build a fresh mesh.
+    floatCassette = null;
+
     setTimeout(() => {
       cassetteEl.classList.remove("is-visible", "is-inserting");
       cassetteEl.hidden = true;
       cassetteEl.style.opacity = "";
       cassetteEl.style.transition = "";
       floatStop();
-
-      // Trigger the player to insert the tape
-      if (window.VEKTROID && window.VEKTROID.insertGeneratedTape) {
-        window.VEKTROID.insertGeneratedTape();
-      }
-    }, 800);
+    }, 900);
   }
 
   function forcePcZoomOut() {
@@ -2245,62 +2286,72 @@
 
   function ensureFloatingCassette3D() {
     const canvas = getFloatingCassetteCanvas();
-    if (!canvas || floatRenderer) return;
+    if (!canvas) return;
 
-    floatRenderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      powerPreference: "high-performance",
-    });
-    floatRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    floatRenderer.outputEncoding = THREE.sRGBEncoding;
-    floatRenderer.setClearColor(0x000000, 0);
+    // If everything is already set up (including a cassette mesh), we're done.
+    if (floatRenderer && floatScene && floatCamera && floatCassette) return;
 
-    floatScene = new THREE.Scene();
-    floatScene.background = null;
+    // Create renderer/scene/camera once.
+    if (!floatRenderer) {
+      floatRenderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+      floatRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      floatRenderer.outputEncoding = THREE.sRGBEncoding;
+      floatRenderer.setClearColor(0x000000, 0);
 
-    floatCamera = new THREE.PerspectiveCamera(48, 1, 0.1, 50);
-    floatCamera.position.set(0, 0.65, 6.2);
-    floatCamera.lookAt(0, 0.1, 0);
+      floatScene = new THREE.Scene();
+      floatScene.background = null;
 
-    const amb = new THREE.AmbientLight(0xffffff, 0.85);
-    floatScene.add(amb);
-    const key = new THREE.DirectionalLight(0xffffff, 1.15);
-    key.position.set(3, 4, 5);
-    floatScene.add(key);
-    const rim = new THREE.PointLight(0x01cdfe, 1.35, 20);
-    rim.position.set(-4, 1.6, 2);
-    floatScene.add(rim);
-    const fill = new THREE.PointLight(0xff71ce, 1.05, 20);
-    fill.position.set(4, 1.2, 2);
-    floatScene.add(fill);
+      floatCamera = new THREE.PerspectiveCamera(48, 1, 0.1, 50);
+      floatCamera.position.set(0, 0.65, 6.2);
+      floatCamera.lookAt(0, 0.1, 0);
 
-    // Build the cassette geometry for the floating cassette.
-    floatCassette = buildCassetteGroup();
-    const tuning = VEKTROID.cassetteTuning;
-    // Facing direction: tweak via VEKTROID.cassetteTuning.rotation
-    floatCassette.rotation.set(
-      tuning?.rotation?.x ?? Math.PI / 2,
-      tuning?.rotation?.y ?? Math.PI,
-      tuning?.rotation?.z ?? Math.PI / 2
-    );
-    floatCassette.position.set(
-      tuning?.meshPosition?.x ?? 0,
-      tuning?.meshPosition?.y ?? 0,
-      tuning?.meshPosition?.z ?? 0
-    );
-    floatScene.add(floatCassette);
+      const amb = new THREE.AmbientLight(0xffffff, 0.85);
+      floatScene.add(amb);
+      const key = new THREE.DirectionalLight(0xffffff, 1.15);
+      key.position.set(3, 4, 5);
+      floatScene.add(key);
+      const rim = new THREE.PointLight(0x01cdfe, 1.35, 20);
+      rim.position.set(-4, 1.6, 2);
+      floatScene.add(rim);
+      const fill = new THREE.PointLight(0xff71ce, 1.05, 20);
+      fill.position.set(4, 1.2, 2);
+      floatScene.add(fill);
 
-    // Apply the generated label texture to the floating cassette's label material
-    // so it shows the same design as the generator cassette.
-    if (labelTexture && floatCassette.userData.labelMat) {
-      floatCassette.userData.labelMat.map = labelTexture;
-      floatCassette.userData.labelMat.needsUpdate = true;
+      window.addEventListener("resize", resizeFloatingCassette3D);
+    }
+
+    if (!floatScene || !floatCamera) return;
+
+    // (Re)build the cassette geometry if it was handed off into the player.
+    if (!floatCassette) {
+      floatCassette = buildCassetteGroup();
+      const tuning = VEKTROID.cassetteTuning;
+      // Facing direction: tweak via VEKTROID.cassetteTuning.rotation
+      floatCassette.rotation.set(
+        tuning?.rotation?.x ?? Math.PI / 2,
+        tuning?.rotation?.y ?? Math.PI,
+        tuning?.rotation?.z ?? Math.PI / 2
+      );
+      floatCassette.position.set(
+        tuning?.meshPosition?.x ?? 0,
+        tuning?.meshPosition?.y ?? 0,
+        tuning?.meshPosition?.z ?? 0
+      );
+      floatScene.add(floatCassette);
+
+      // Apply the generated label texture so it matches the generator.
+      if (labelTexture && floatCassette.userData.labelMat) {
+        floatCassette.userData.labelMat.map = labelTexture;
+        floatCassette.userData.labelMat.needsUpdate = true;
+      }
     }
 
     resizeFloatingCassette3D();
-    window.addEventListener("resize", resizeFloatingCassette3D);
 
     // Note: Drag-to-move is handled by ensureCassetteFollowHandlers
     // The canvas just renders - dragging moves the entire canvas element
@@ -2749,8 +2800,9 @@
 
   // Label texture (updated from the generated Paint cassette when available)
   const labelCanvas = document.createElement("canvas");
-  labelCanvas.width = 256;
-  labelCanvas.height = 64;
+  // Match Paint canvas aspect ratio (248:100 ~= 2.48) and increase resolution.
+  labelCanvas.width = 512;
+  labelCanvas.height = 206;
   const labelCtx = labelCanvas.getContext("2d");
 
   function drawImageCover(ctx, img, dx, dy, dw, dh) {
@@ -2827,10 +2879,11 @@
   labelTexture.minFilter = THREE.LinearFilter;
   labelTexture.magFilter = THREE.LinearFilter;
   const tapeLabel = new THREE.Mesh(
-    new THREE.BoxGeometry(2.8, 0.5, 0.32),
+    // Keep the cover image aspect closer to the Paint canvas.
+    new THREE.BoxGeometry(2.8, 1.13, 0.32),
     new THREE.MeshBasicMaterial({ map: labelTexture })
   );
-  tapeLabel.position.y = 0.5;
+  tapeLabel.position.y = 0.65;
   tapeGroup.add(tapeBody);
   tapeGroup.add(tapeLabel);
 
@@ -2857,6 +2910,11 @@
   tapeGroup.add(leftReel);
   tapeGroup.add(rightReel);
 
+  // References used when swapping the active cassette mesh.
+  tapeGroup.userData.leftReel = leftReel;
+  tapeGroup.userData.rightReel = rightReel;
+  tapeGroup.userData.labelMesh = tapeLabel;
+
   // Keep the tape in playerGroup local space so it always matches rotation
   tapeGroup.position.set(6, 0.25, 0);
   tapeGroup.visible = false;
@@ -2881,6 +2939,27 @@
   const damping = 0.9;
   let tapeInserted = false;
   let isPlaying = false;
+
+  // Active cassette mesh inside the player scene.
+  // Default is the built-in tapeGroup, but we can hand off the floating cassette mesh
+  // so everything animates in the same Three.js coordinate space.
+  let activeCassetteGroup = tapeGroup;
+
+  function setActiveCassetteGroup(group) {
+    activeCassetteGroup = group || tapeGroup;
+  }
+
+  function applyPlayerLabelToCassette(group) {
+    if (!group) return;
+    if (group === tapeGroup) return;
+
+    // buildCassetteGroup() stores the label material on userData.labelMat.
+    const labelMat = group.userData?.labelMat;
+    if (labelMat) {
+      labelMat.map = labelTexture;
+      labelMat.needsUpdate = true;
+    }
+  }
 
   // ==========================
   // AUDIO: FloralShoppeCassette
@@ -3343,8 +3422,11 @@
     renderer.render(scene, camera);
 
     if (tapeInserted && isPlaying) {
-      leftReel.rotation.y -= 0.1;
-      rightReel.rotation.y -= 0.1;
+      const reels = activeCassetteGroup?.userData;
+      const l = reels?.leftReel || leftReel;
+      const r = reels?.rightReel || rightReel;
+      l.rotation.y -= 0.1;
+      r.rotation.y -= 0.1;
     }
 
     // Animate lights
@@ -3490,12 +3572,16 @@
 
     if (cassetteState.inserted || cassetteState.inFlight) return;
 
-    // Hide the floating cassette if visible
+    // If the floating cassette exists, prefer animating *that* into the player
+    // so it feels like the same cassette is inserted.
     const floatingEl = document.getElementById("floating-cassette-3d");
     if (floatingEl && !floatingEl.hidden) {
-      floatingEl.hidden = true;
-      floatingEl.classList.remove("is-visible");
-      VEKTROID.stopFloatingCassette3D?.();
+      // Let the drag/drop handler own the animation path.
+      // Simulate a drop-in-zone by directly calling the same entrypoint.
+      if (typeof VEKTROID.animateFloatingCassetteIntoPlayer === "function") {
+        VEKTROID.animateFloatingCassetteIntoPlayer();
+        return;
+      }
     }
 
     cassetteState.created = false;
@@ -3505,11 +3591,12 @@
     // Ensure the tape label matches the generated cassette before inserting.
     setTapeLabel({ title: "" });
 
+    setActiveCassetteGroup(tapeGroup);
     insertTapeAnimation();
   });
 
   // Expose function for drag-and-drop cassette insertion
-  VEKTROID.insertGeneratedTape = function () {
+  VEKTROID.insertGeneratedTape = function (opts = {}) {
     if (tapeInserted) return;
 
     const cassetteState = VEKTROID.cassetteState;
@@ -3526,28 +3613,57 @@
     // Ensure the tape label matches the generated cassette before inserting.
     setTapeLabel({ title: "" });
 
-    insertTapeAnimation();
+    // If a cassette mesh is provided (handoff from floating cassette), insert THAT mesh.
+    if (opts && opts.mesh) {
+      const mesh = opts.mesh;
+
+      // Remove from any previous scene.
+      if (mesh && mesh.parent) mesh.parent.remove(mesh);
+
+      // Add into the player's coordinate space.
+      playerGroup.add(mesh);
+      mesh.visible = true;
+
+      // Normalize transform for the player universe.
+      mesh.rotation.set(0, 0, 0);
+      mesh.position.set(6, 0.25, 0);
+
+      applyPlayerLabelToCassette(mesh);
+      setActiveCassetteGroup(mesh);
+
+      insertTapeAnimation({ ...opts, targetGroup: mesh });
+      return;
+    }
+
+    setActiveCassetteGroup(tapeGroup);
+    insertTapeAnimation(opts);
   };
 
-  function insertTapeAnimation() {
-    // Only show the player tape once we start inserting.
-    tapeGroup.visible = true;
+  function insertTapeAnimation(opts = {}) {
+    const targetGroup = opts.targetGroup || tapeGroup;
 
-    const startX = tapeGroup.position.x;
+    // Only show the tape once we start inserting.
+    targetGroup.visible = true;
+    if (targetGroup !== tapeGroup) tapeGroup.visible = false;
+
+    const startX =
+      typeof opts.startX === "number" ? opts.startX : targetGroup.position.x;
     const endX = 0;
     const t0 = performance.now();
-    const dur = 650;
+    const dur = typeof opts.durationMs === "number" ? opts.durationMs : 650;
+
+    targetGroup.position.x = startX;
 
     function step(now) {
       const p = Math.min(1, Math.max(0, (now - t0) / dur));
       const e = 1 - Math.pow(1 - p, 3);
-      tapeGroup.position.x = startX + (endX - startX) * e;
+      targetGroup.position.x = startX + (endX - startX) * e;
       if (p < 1) {
         requestAnimationFrame(step);
         return;
       }
 
-      tapeGroup.position.set(0, 0.25, 0);
+      targetGroup.position.set(0, 0.25, 0);
       tapeInserted = true;
       loadTrack(0);
       setStatus("ロード完了 LOADED", "#01cdfe");
