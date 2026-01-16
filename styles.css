@@ -1302,6 +1302,18 @@ button:focus {
   );
 }
 
+/* PC Section background FX canvas (shooting stars + particle clouds) */
+#pc-bg-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.95;
+  mix-blend-mode: screen;
+}
+
 #pc-container {
   position: relative;
   width: min(90vw, 800px);
@@ -2060,7 +2072,7 @@ button:focus {
   background-size: 160px 160px;
   background-position: 0 0;
   background-repeat: repeat;
-  z-index: 0;
+  z-index: 1;
   transform-origin: center bottom;
   pointer-events: none;
   filter: none;

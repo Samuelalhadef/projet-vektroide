@@ -513,6 +513,201 @@
 })();
 
 /* ============================================
+           PC SECTION - BACKGROUND FX (CANVAS)
+           ============================================ */
+(function () {
+  const section = document.getElementById("pc-section");
+  const canvas = document.getElementById("pc-bg-fx");
+  if (!section || !canvas) return;
+
+  const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  if (!ctx) return;
+
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  let cssW = 1;
+  let cssH = 1;
+  let dpr = 1;
+
+  function resize() {
+    const rect = section.getBoundingClientRect();
+    cssW = Math.max(1, Math.floor(rect.width));
+    // Use scrollHeight so the canvas covers the whole section, not only the viewport slice.
+    cssH = Math.max(1, Math.floor(section.scrollHeight || rect.height));
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function rand(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  const clouds = Array.from({ length: 18 }, () => {
+    const r = rand(90, 240);
+    return {
+      x: rand(0, 1),
+      y: rand(0.05, 0.75),
+      r,
+      vx: rand(-0.004, 0.004),
+      vy: rand(-0.002, 0.002),
+      a: rand(0.02, 0.06),
+      hue: Math.random() < 0.5 ? 190 : 315, // cyan-ish or pink-ish
+    };
+  });
+
+  const shootingStars = [];
+  let nextSpawnMs = performance.now() + rand(1200, 3200);
+
+  function spawnShootingStar(nowMs) {
+    // Start slightly off the top-left and shoot down-right.
+    const x = rand(-0.15, 0.5) * cssW;
+    const y = rand(-0.15, 0.35) * cssH;
+    const speed = rand(900, 1550); // px/s
+    const angle = rand(Math.PI * 0.18, Math.PI * 0.32);
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+
+    shootingStars.push({
+      x,
+      y,
+      vx,
+      vy,
+      age: 0,
+      ttl: rand(0.55, 0.95),
+      len: rand(140, 260),
+      w: rand(1.2, 2.2),
+    });
+
+    nextSpawnMs = nowMs + rand(1200, 4200);
+  }
+
+  let running = false;
+  let raf = 0;
+  let lastMs = 0;
+
+  function draw(nowMs) {
+    if (!running) return;
+    raf = requestAnimationFrame(draw);
+
+    const dt = Math.min(0.05, Math.max(0.001, (nowMs - lastMs) / 1000));
+    lastMs = nowMs;
+
+    // Resize lazily (handles font load / layout shifts)
+    if (canvas.width === 0 || canvas.height === 0) resize();
+
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    // Particle clouds
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    for (const c of clouds) {
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      if (c.x < -0.2) c.x = 1.2;
+      if (c.x > 1.2) c.x = -0.2;
+      if (c.y < -0.2) c.y = 1.2;
+      if (c.y > 1.2) c.y = -0.2;
+
+      const cx = c.x * cssW;
+      const cy = c.y * cssH;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, c.r);
+      g.addColorStop(0, `hsla(${c.hue}, 95%, 70%, ${c.a})`);
+      g.addColorStop(0.55, `hsla(${c.hue}, 95%, 60%, ${c.a * 0.55})`);
+      g.addColorStop(1, `hsla(${c.hue}, 95%, 55%, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    if (!prefersReducedMotion && nowMs >= nextSpawnMs && cssW > 10) {
+      spawnShootingStar(nowMs);
+    }
+
+    // Shooting stars
+    if (!prefersReducedMotion) {
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (let i = shootingStars.length - 1; i >= 0; i--) {
+        const s = shootingStars[i];
+        s.age += dt;
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+
+        const p = Math.min(1, s.age / s.ttl);
+        const a = (1 - p) * 0.85;
+        const dx = -s.vx;
+        const dy = -s.vy;
+        const mag = Math.hypot(dx, dy) || 1;
+        const ux = dx / mag;
+        const uy = dy / mag;
+        const x2 = s.x + ux * s.len;
+        const y2 = s.y + uy * s.len;
+
+        const g = ctx.createLinearGradient(s.x, s.y, x2, y2);
+        g.addColorStop(0, `rgba(255,255,255,${a})`);
+        g.addColorStop(0.25, `rgba(1,205,254,${a * 0.7})`);
+        g.addColorStop(1, "rgba(255,113,206,0)");
+
+        ctx.strokeStyle = g;
+        ctx.lineWidth = s.w;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        if (p >= 1 || s.x > cssW + 300 || s.y > cssH + 300) {
+          shootingStars.splice(i, 1);
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    resize();
+    lastMs = performance.now();
+    raf = requestAnimationFrame(draw);
+  }
+
+  function stop() {
+    running = false;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+  }
+
+  // Run only when on-screen.
+  const io = new IntersectionObserver(
+    (entries) => {
+      const on = entries.some((e) => e.isIntersecting);
+      if (on) start();
+      else stop();
+    },
+    { threshold: 0.02 }
+  );
+  io.observe(section);
+
+  window.addEventListener(
+    "resize",
+    () => {
+      resize();
+    },
+    { passive: true }
+  );
+})();
+
+/* ============================================
            PLACEHOLDER - OLD TV CODE REMOVED
            ============================================ */
 // Old TV transition wrapper code removed - now using PC boot sequence above
@@ -1103,7 +1298,7 @@
     setCursor("crosshair");
     showToolPanel("colors");
     setMenubarActive("colors");
-    setStatus("色ツール Colors (BG)\u3000クリックで背景色を変更");
+    setStatus("色ツール Colors\u3000クリックでペン色を変更");
   }
 
   function enterStickersMode() {
@@ -1193,15 +1388,22 @@
       name: "sunglasses",
     },
     {
-      src: "image_paint/pngtree-cd-png-element-png-image_2344136.jpg",
+      src: "image_paint/pngtree-cd-png-element-png-image_2344136.png",
       name: "cd",
     },
   ];
 
   let currentBgColor = "#ff71ce"; // Pink vaporwave default (so turquoise text is visible)
+  let penColor = "#01cdfe";
   let selectedSticker = null;
   let renderMode = "default";
   let artSnapshotCanvas = null;
+
+  // Freehand drawing layer (persisted across renders/modes)
+  const drawLayerCanvas = document.createElement("canvas");
+  const drawLayerCtx = drawLayerCanvas.getContext("2d");
+  let isDrawing = false;
+  let lastDraw = null;
 
   // Canvas-based stickers (reliable: no overlay click/drag issues)
   const stickerCache = new Map();
@@ -1232,7 +1434,41 @@
     canvas.height = Math.floor(cssH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
+
+    // Keep drawing layer in sync with canvas backing store.
+    if (drawLayerCtx) {
+      const prevW = drawLayerCanvas.width;
+      const prevH = drawLayerCanvas.height;
+      if (prevW !== canvas.width || prevH !== canvas.height) {
+        const prev = document.createElement("canvas");
+        prev.width = prevW;
+        prev.height = prevH;
+        const pctx = prev.getContext("2d");
+        if (pctx && prevW && prevH) pctx.drawImage(drawLayerCanvas, 0, 0);
+
+        drawLayerCanvas.width = canvas.width;
+        drawLayerCanvas.height = canvas.height;
+        // Draw in CSS pixels (same as the visible canvas)
+        drawLayerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawLayerCtx.imageSmoothingEnabled = false;
+        if (pctx && prevW && prevH) {
+          drawLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
+          drawLayerCtx.drawImage(prev, 0, 0, canvas.width, canvas.height);
+          drawLayerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+      }
+    }
+
     renderCanvas({ keepArt: true });
+  }
+
+  function drawUserStrokes() {
+    if (!drawLayerCanvas.width || !drawLayerCanvas.height) return;
+    ctx.save();
+    // Draw backing-store pixels 1:1
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(drawLayerCanvas, 0, 0);
+    ctx.restore();
   }
 
   function drawArtSnapshotToCanvas() {
@@ -1269,11 +1505,13 @@
   function renderCanvas({ keepArt = true } = {}) {
     if (renderMode === "art") {
       if (keepArt && drawArtSnapshotToCanvas()) {
+        drawUserStrokes();
         drawPlacedStickers();
         return;
       }
       renderProceduralArt();
       snapshotArtFromCanvas();
+      drawUserStrokes();
       drawPlacedStickers();
       return;
     }
@@ -1281,6 +1519,7 @@
     renderDefaultCanvas();
     // Leaving art mode should clear the stored art so it doesn't reappear later.
     artSnapshotCanvas = null;
+    drawUserStrokes();
     drawPlacedStickers();
   }
 
@@ -1459,21 +1698,19 @@
     const colorDiv = document.createElement("div");
     colorDiv.className = "paint-color";
     colorDiv.style.backgroundColor = color;
-    if (color === currentBgColor) colorDiv.classList.add("selected");
+    if (color === penColor) colorDiv.classList.add("selected");
 
     colorDiv.addEventListener("click", () => {
       clearColorSelection();
       colorDiv.classList.add("selected");
-      currentBgColor = color;
+      penColor = color;
 
-      // Switching background color is a "colors" action.
+      // Selecting pen color is a "colors" action.
       selectedSticker = null;
       clearStickerSelection();
 
-      // Redraw canvas with new background and text
-      renderMode = "default";
-      renderCanvas();
-      setStatus("背景色変更 Background changed");
+      setCursor("crosshair");
+      setStatus("ペン色変更 Pen color changed");
     });
 
     colorElements.push(colorDiv);
@@ -1555,6 +1792,35 @@
   // Canvas pointer interactions (place / drag / remove stickers)
   canvas.style.touchAction = "none";
 
+  function beginStroke(p) {
+    if (!drawLayerCtx) return;
+    isDrawing = true;
+    lastDraw = { x: p.x, y: p.y };
+
+    drawLayerCtx.strokeStyle = penColor;
+    drawLayerCtx.lineWidth = 2;
+    drawLayerCtx.lineCap = "round";
+    drawLayerCtx.lineJoin = "round";
+    drawLayerCtx.beginPath();
+    drawLayerCtx.moveTo(p.x, p.y);
+    // Dot for simple clicks (no move)
+    drawLayerCtx.lineTo(p.x + 0.01, p.y + 0.01);
+    drawLayerCtx.stroke();
+  }
+
+  function extendStroke(p) {
+    if (!isDrawing || !drawLayerCtx || !lastDraw) return;
+    drawLayerCtx.lineTo(p.x, p.y);
+    drawLayerCtx.stroke();
+    lastDraw = { x: p.x, y: p.y };
+  }
+
+  function endStroke() {
+    if (!isDrawing) return;
+    isDrawing = false;
+    lastDraw = null;
+  }
+
   canvas.addEventListener("pointerdown", (e) => {
     const p = getCanvasPointFromEvent(e);
     if (p.x < 0 || p.y < 0 || p.x > p.w || p.y > p.h) return;
@@ -1585,7 +1851,16 @@
       placedStickers.push(s);
       renderCanvas({ keepArt: true });
       setStatus("ステッカー配置完了 Sticker placed!");
+      e.preventDefault();
+      return;
     }
+
+    // Freehand drawing when no sticker is selected and no sticker is hit.
+    beginStroke(p);
+    canvas.setPointerCapture?.(e.pointerId);
+    setCursor("crosshair");
+    renderCanvas({ keepArt: true });
+    e.preventDefault();
   });
 
   canvas.addEventListener("pointermove", (e) => {
@@ -1596,6 +1871,12 @@
       s.x = p.x - dragStickerDx;
       s.y = p.y - dragStickerDy;
       clampStickerToCanvas(s);
+      renderCanvas({ keepArt: true });
+      return;
+    }
+
+    if (isDrawing) {
+      extendStroke(p);
       renderCanvas({ keepArt: true });
       return;
     }
@@ -1614,8 +1895,14 @@
     setCursor(selectedSticker ? "copy" : "crosshair");
   }
 
-  canvas.addEventListener("pointerup", stopCanvasDrag);
-  canvas.addEventListener("pointercancel", stopCanvasDrag);
+  canvas.addEventListener("pointerup", () => {
+    stopCanvasDrag();
+    endStroke();
+  });
+  canvas.addEventListener("pointercancel", () => {
+    stopCanvasDrag();
+    endStroke();
+  });
 
   canvas.addEventListener("dblclick", (e) => {
     const p = getCanvasPointFromEvent(e);
@@ -1650,7 +1937,7 @@
   }
 
   // Default tool state
-  enterColorsMode();
+  enterBackgroundMode();
 
   // Stickers are now drawn into the canvas; keep the overlay layer inert.
   if (stickersLayer) {
@@ -2175,8 +2462,73 @@
       y > rect.top && y < rect.bottom && x > rect.left && x < rect.right;
 
     if (inZone) {
-      insertCassetteIntoPlayer();
+      // Smoothly move the floating cassette to the player's "start" position
+      // so the insertion animation feels continuous.
+      dockCassetteToPlayerStart()
+        .then(() => {
+          insertCassetteIntoPlayer();
+        })
+        .catch(() => {
+          insertCassetteIntoPlayer();
+        });
     }
+  }
+
+  function dockCassetteToPlayerStart() {
+    const state = getCassetteState();
+    const cassetteEl = document.getElementById("floating-cassette-3d");
+    const playerCanvas = document.getElementById("player-canvas");
+    if (!cassetteEl || !playerCanvas) return Promise.resolve();
+    if (state.inserted) return Promise.resolve();
+
+    // Avoid double-start.
+    if (state.inFlight) return Promise.resolve();
+    state.inFlight = true;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    const tuning = VEKTROID.cassetteTuning;
+    const dock = tuning?.playerDock || { x: 0.86, y: 0.58 };
+    const r = playerCanvas.getBoundingClientRect();
+    const targetX = r.left + r.width * dock.x;
+    const targetY = r.top + r.height * dock.y;
+
+    const startX = state.x || targetX;
+    const startY = state.y || targetY;
+
+    // Snap for reduced motion.
+    if (prefersReducedMotion) {
+      state.x = targetX;
+      state.y = targetY;
+      cassetteEl.style.left = state.x + "px";
+      cassetteEl.style.top = state.y + "px";
+      state.inFlight = false;
+      return Promise.resolve();
+    }
+
+    const durationMs = 420;
+    const t0 = performance.now();
+
+    return new Promise((resolve) => {
+      function tick(now) {
+        const p = Math.min(1, Math.max(0, (now - t0) / durationMs));
+        const e = easeOutCubic(p);
+        state.x = startX + (targetX - startX) * e;
+        state.y = startY + (targetY - startY) * e;
+        cassetteEl.style.left = state.x + "px";
+        cassetteEl.style.top = state.y + "px";
+
+        if (p >= 1) {
+          state.inFlight = false;
+          resolve();
+          return;
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
   }
 
   // Allow the player "INSERT" button to use the same visual insertion.
