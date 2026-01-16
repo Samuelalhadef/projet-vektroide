@@ -137,7 +137,8 @@
   const floorStars = document.getElementById("floor-stars");
   if (!floorStars) return;
 
-  const starCount = 26;
+  // Half as many for perf / less visual noise.
+  const starCount = 13;
 
   for (let i = 0; i < starCount; i++) {
     const star = document.createElement("div");
@@ -418,20 +419,19 @@
 
   // Paint icon click - open Paint
   if (paintIcon) {
-    paintIcon.addEventListener("click", () => {
-      if (paintWindowContainer) {
-        paintWindowContainer.classList.remove("hidden");
+    const openPaint = () => {
+      if (!paintWindowContainer) return;
+      paintWindowContainer.classList.remove("hidden");
+      // Ensure the open transition always triggers.
+      requestAnimationFrame(() => {
         paintWindowContainer.classList.add("visible");
-      }
-    });
+      });
+    };
+
+    paintIcon.addEventListener("click", openPaint);
 
     // Double-click also works
-    paintIcon.addEventListener("dblclick", () => {
-      if (paintWindowContainer) {
-        paintWindowContainer.classList.remove("hidden");
-        paintWindowContainer.classList.add("visible");
-      }
-    });
+    paintIcon.addEventListener("dblclick", openPaint);
   }
 
   // Paint close button
@@ -442,6 +442,109 @@
         paintWindowContainer.classList.add("hidden");
       }
     });
+  }
+
+  // Generic XP windows (My PC / Folder / Recycle Bin)
+  if (xpDesktop) {
+    let xpWindowZ = 60;
+
+    function focusXpWindow(wrapper) {
+      xpWindowZ += 1;
+      wrapper.style.zIndex = String(xpWindowZ);
+    }
+
+    function closeXpWindow(wrapper) {
+      if (!wrapper) return;
+      wrapper.classList.remove("is-visible");
+      wrapper.classList.add("is-hiding");
+      const cleanup = () => wrapper.remove();
+      wrapper.addEventListener("transitionend", cleanup, { once: true });
+      setTimeout(cleanup, 380);
+    }
+
+    function openXpWindow({ appId, title, bodyHtml, iconSrc }) {
+      const existing = xpDesktop.querySelector(
+        `.xp-window-wrapper[data-app-window="${appId}"]`,
+      );
+      if (existing) {
+        focusXpWindow(existing);
+        return existing;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "xp-window-wrapper";
+      wrapper.dataset.appWindow = appId;
+      wrapper.innerHTML = `
+        <div class="xp-window" role="dialog" aria-label="${title}">
+          <div class="xp-titlebar">
+            <span class="xp-title">
+              ${iconSrc ? `<img class="xp-title-icon" src="${iconSrc}" alt="" aria-hidden="true">` : ""}
+              ${title}
+            </span>
+            <div class="xp-titlebar-buttons">
+              <button class="xp-titlebar-btn xp-close-btn" type="button" data-window-close aria-label="Close">✕</button>
+            </div>
+          </div>
+          <div class="xp-window-body">${bodyHtml}</div>
+        </div>
+      `;
+
+      xpDesktop.appendChild(wrapper);
+      focusXpWindow(wrapper);
+
+      wrapper.addEventListener("pointerdown", () => focusXpWindow(wrapper));
+      wrapper.addEventListener("click", (e) => {
+        const closeBtn = e.target.closest("[data-window-close]");
+        if (closeBtn) closeXpWindow(wrapper);
+      });
+
+      requestAnimationFrame(() => {
+        wrapper.classList.add("is-visible");
+      });
+
+      return wrapper;
+    }
+
+    function handleDesktopIconOpen(target) {
+      const icon = target.closest(".desktop-icon");
+      if (!icon) return;
+      const app = icon.getAttribute("data-app");
+      if (!app) return;
+
+      // Paint has its own dedicated window.
+      if (app === "paint") return;
+
+      if (app === "my-pc") {
+        openXpWindow({
+          appId: "my-pc",
+          title: "My Computer",
+          iconSrc: "image_paint/115.ico",
+          bodyHtml:
+            '<div class="xp-window-placeholder">System folders coming soon…</div>',
+        });
+      } else if (app === "folder") {
+        openXpWindow({
+          appId: "folder",
+          title: "Folder",
+          iconSrc: "image_paint/23.ico",
+          bodyHtml:
+            '<div class="xp-window-placeholder">Nothing here yet (but it will).</div>',
+        });
+      } else if (app === "recycle-bin") {
+        openXpWindow({
+          appId: "recycle-bin",
+          title: "Recycle Bin",
+          iconSrc: "image_paint/918.ico",
+          bodyHtml:
+            '<div class="xp-window-placeholder">The void is empty.</div>',
+        });
+      }
+    }
+
+    xpDesktop.addEventListener("click", (e) => handleDesktopIconOpen(e.target));
+    xpDesktop.addEventListener("dblclick", (e) =>
+      handleDesktopIconOpen(e.target),
+    );
   }
 
   // Expose function to zoom out PC when cassette is created
@@ -536,7 +639,7 @@
     cssW = Math.max(1, Math.floor(rect.width));
     // Use scrollHeight so the canvas covers the whole section, not only the viewport slice.
     cssH = Math.max(1, Math.floor(section.scrollHeight || rect.height));
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, 1.25);
 
     canvas.style.width = cssW + "px";
     canvas.style.height = cssH + "px";
@@ -559,6 +662,7 @@
       vy: rand(-0.002, 0.002),
       a: rand(0.02, 0.06),
       hue: Math.random() < 0.5 ? 190 : 315, // cyan-ish or pink-ish
+      phase: rand(0, Math.PI * 2),
     };
   });
 
@@ -591,6 +695,7 @@
   let running = false;
   let raf = 0;
   let lastMs = 0;
+  let t = 0;
 
   function draw(nowMs) {
     if (!running) return;
@@ -598,6 +703,7 @@
 
     const dt = Math.min(0.05, Math.max(0.001, (nowMs - lastMs) / 1000));
     lastMs = nowMs;
+    t += dt;
 
     // Resize lazily (handles font load / layout shifts)
     if (canvas.width === 0 || canvas.height === 0) resize();
@@ -617,16 +723,32 @@
 
       const cx = c.x * cssW;
       const cy = c.y * cssH;
+      const hue = c.hue + Math.sin(t * 0.18 + c.phase) * 18;
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, c.r);
-      g.addColorStop(0, `hsla(${c.hue}, 95%, 70%, ${c.a})`);
-      g.addColorStop(0.55, `hsla(${c.hue}, 95%, 60%, ${c.a * 0.55})`);
-      g.addColorStop(1, `hsla(${c.hue}, 95%, 55%, 0)`);
+      g.addColorStop(0, `hsla(${hue}, 95%, 70%, ${c.a})`);
+      g.addColorStop(0.55, `hsla(${hue}, 95%, 60%, ${c.a * 0.55})`);
+      g.addColorStop(1, `hsla(${hue}, 95%, 55%, 0)`);
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
+
+    // Occasional neon sweep across the section
+    if (!prefersReducedMotion) {
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      const sweepX = ((nowMs * 0.04) % (cssW + 320)) - 160;
+      const sweep = ctx.createLinearGradient(sweepX - 140, 0, sweepX + 140, 0);
+      sweep.addColorStop(0, "rgba(1,205,254,0)");
+      sweep.addColorStop(0.45, "rgba(1,205,254,0.04)");
+      sweep.addColorStop(0.55, "rgba(255,113,206,0.05)");
+      sweep.addColorStop(1, "rgba(255,113,206,0)");
+      ctx.fillStyle = sweep;
+      ctx.fillRect(0, 0, cssW, cssH);
+      ctx.restore();
+    }
 
     if (!prefersReducedMotion && nowMs >= nextSpawnMs && cssW > 10) {
       spawnShootingStar(nowMs);
@@ -732,8 +854,12 @@
   camera.lookAt(0, 0.2, -18);
   camera.layers.set(0);
 
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true,
+    powerPreference: "high-performance",
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
   container.appendChild(renderer.domElement);
@@ -764,15 +890,17 @@
   const pillarsRenderer = new THREE.WebGLRenderer({
     alpha: true,
     antialias: true,
+    powerPreference: "high-performance",
   });
-  pillarsRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  pillarsRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   pillarsRenderer.outputEncoding = THREE.sRGBEncoding;
 
   const modelRenderer = new THREE.WebGLRenderer({
     alpha: true,
     antialias: true,
+    powerPreference: "high-performance",
   });
-  modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   modelRenderer.outputEncoding = THREE.sRGBEncoding;
   if (modelRevealEl) {
     // Append pillars first so the hero model renders on top.
@@ -958,6 +1086,70 @@
     tileMats.push(material);
   }
 
+  function rand(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  // 3D "stars" as true polyhedra (instanced for performance) — always blue.
+  // Half as many for perf / less visual noise.
+  const HERO_STAR_COUNT = 14;
+  const heroStarGeom = new THREE.IcosahedronGeometry(1, 0);
+  const heroStarMat = new THREE.MeshBasicMaterial({
+    color: 0x01cdfe,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.82,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const heroStarsMesh = new THREE.InstancedMesh(
+    heroStarGeom,
+    heroStarMat,
+    HERO_STAR_COUNT,
+  );
+  heroStarsMesh.frustumCulled = true;
+  heroStarsMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  scene.add(heroStarsMesh);
+
+  function sampleHeroStarX() {
+    // Keep stars on the sides only: never spawn in the middle band.
+    const xMin = -34;
+    const xMax = 34;
+    const dead = 14; // center half-width to keep clear
+    const left = Math.random() < 0.5;
+    if (left) return rand(xMin, -dead);
+    return rand(dead, xMax);
+  }
+
+  const heroStarData = Array.from({ length: HERO_STAR_COUNT }, () => {
+    const s = rand(0.55, 1.65);
+    return {
+      x: sampleHeroStarX(),
+      baseY: rand(-1.6, 4.2),
+      z: rand(-tileDepth * 4.2, tileDepth * 0.75),
+      s,
+      rx: rand(-0.8, 0.8),
+      ry: rand(-0.8, 0.8),
+      rz: rand(0, Math.PI * 2),
+      phase: rand(0, Math.PI * 2),
+      bobAmp: rand(0.05, 0.22),
+      bobSpeed: rand(0.35, 0.85),
+      spin: rand(-0.02, 0.02),
+    };
+  });
+  const heroStarTmp = new THREE.Object3D();
+  (function initHeroStars() {
+    for (let i = 0; i < heroStarData.length; i++) {
+      const d = heroStarData[i];
+      heroStarTmp.position.set(d.x, d.baseY, d.z);
+      heroStarTmp.rotation.set(d.rx, d.ry, d.rz);
+      heroStarTmp.scale.setScalar(d.s);
+      heroStarTmp.updateMatrix();
+      heroStarsMesh.setMatrixAt(i, heroStarTmp.matrix);
+    }
+    heroStarsMesh.instanceMatrix.needsUpdate = true;
+  })();
+
   // Load the hero GLB model.
   // Instead of offsetting the rotation axis (which can be fiddly depending on model origin/orientation),
   // we orbit the camera around the model based on scroll.
@@ -1139,6 +1331,33 @@
       }
     });
 
+    // Stars drift forward with the terrain.
+    const starWrapZ = tileDepth * 0.85;
+    const starResetZ = tileDepth * 4.8;
+    for (let i = 0; i < heroStarData.length; i++) {
+      const d = heroStarData[i];
+      d.z += speed;
+      if (d.z >= starWrapZ) {
+        d.z -= starResetZ;
+        d.x = sampleHeroStarX();
+        d.baseY = rand(-1.6, 4.2);
+        d.s = rand(0.55, 1.65);
+        d.rx = rand(-0.8, 0.8);
+        d.ry = rand(-0.8, 0.8);
+        d.rz = rand(0, Math.PI * 2);
+        d.phase = rand(0, Math.PI * 2);
+      }
+      const y = d.baseY + Math.sin(time * d.bobSpeed + d.phase) * d.bobAmp;
+      d.rz += d.spin;
+
+      heroStarTmp.position.set(d.x, y, d.z);
+      heroStarTmp.rotation.set(d.rx, d.ry, d.rz);
+      heroStarTmp.scale.setScalar(d.s);
+      heroStarTmp.updateMatrix();
+      heroStarsMesh.setMatrixAt(i, heroStarTmp.matrix);
+    }
+    heroStarsMesh.instanceMatrix.needsUpdate = true;
+
     // Pillars: automatic spin + half-scroll parallax (semi-fixed feel)
     // Use hero section's top offset so effect is tied to the section while it's on screen.
     if (pillarsRoot && heroSection) {
@@ -1248,8 +1467,6 @@
     : [];
 
   function setStatus(text) {
-    // Statusbar removed; keep a lightweight signal for debugging.
-    // (No UI element to write to.)
     if (typeof text === "string" && text) console.debug("[Paint]", text);
   }
 
@@ -1420,6 +1637,11 @@
   let resizingSticker = null;
   let resizeStartY = 0;
   let resizeStartSize = 0;
+
+  // Sticker drag-to-move state
+  let draggingSticker = null;
+  let dragStickerOffsetX = 0;
+  let dragStickerOffsetY = 0;
 
   // Setup canvas size
   function resizeCanvas() {
@@ -1650,39 +1872,207 @@
   }
 
   function renderProceduralArt() {
-    // Use backing-store size for pixel art generation.
+    // Static “3D chaos” look drawn as lines on the 2D canvas (no animation).
+    // Render in backing-store pixels so it snapshots cleanly.
     const w = canvas.width;
     const h = canvas.height;
-    const img = ctx.createImageData(w, h);
-    const data = img.data;
-    const seed = Math.random() * 1000;
-    const freqA = 0.012 + Math.random() * 0.01;
-    const freqB = 0.016 + Math.random() * 0.012;
-    const freqC = 0.02 + Math.random() * 0.015;
 
-    for (let y = 0; y < h; y++) {
-      const ny = y / h - 0.5;
-      for (let x = 0; x < w; x++) {
-        const nx = x / w - 0.5;
-        const wave =
-          Math.sin((x + seed) * freqA) +
-          Math.cos((y - seed) * freqB) +
-          Math.sin((x + y) * freqC + seed * 0.02);
-        const swirl = Math.sin(6 * Math.hypot(nx, ny) + seed * 0.01);
-        const mix = (wave + swirl) * 0.5;
-        const hue = (mix * 140 + x * 0.15 + y * 0.12 + seed) % 360;
-        const sat = 0.75;
-        const light = 0.5 + 0.15 * Math.sin(mix * 3);
-        const [r, g, b] = hslToRgb(hue, sat, light);
-        const idx = (y * w + x) * 4;
-        data[idx] = r;
-        data[idx + 1] = g;
-        data[idx + 2] = b;
-        data[idx + 3] = 255;
-      }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    const palette = [
+      "#ff71ce", // vapor pink
+      "#01cdfe", // cyan
+      "#b967ff", // purple
+      "#05ffa1", // neon green
+      "#fffb96", // pale yellow
+      "#ff0055", // hot red
+      "#00ffff", // pure cyan
+      "#0000ff", // blue
+      "#ffaa00", // orange
+    ];
+    const pick = () => palette[(Math.random() * palette.length) | 0];
+
+    // Background
+    const bg = Math.random() > 0.5 ? "#1a0b2e" : "#000000";
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Fog-ish vertical gradient
+    const fog = ctx.createLinearGradient(0, 0, 0, h);
+    fog.addColorStop(0, "rgba(255,255,255,0.02)");
+    fog.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, 0, w, h);
+
+    // Sun
+    const sunX = w * (0.35 + Math.random() * 0.35);
+    const sunY = h * (0.18 + Math.random() * 0.22);
+    const sunR = Math.max(10, Math.min(w, h) * (0.22 + Math.random() * 0.18));
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = Math.random() > 0.5 ? "#ff0066" : "#ffaa00";
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Perspective grid
+    const horizonY = Math.floor(h * (0.55 + Math.random() * 0.08));
+    const vanishX = Math.floor(w * (0.35 + Math.random() * 0.3));
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = pick();
+    ctx.lineWidth = 1;
+
+    // Vertical lines converging
+    const vCount = 18;
+    for (let i = 0; i <= vCount; i++) {
+      const t = i / vCount;
+      const x = t * w;
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      ctx.lineTo(vanishX, horizonY);
+      ctx.stroke();
     }
 
-    ctx.putImageData(img, 0, 0);
+    // Horizontal lines with nonlinear spacing
+    const hCount = 12;
+    for (let i = 0; i < hCount; i++) {
+      const t = i / (hCount - 1);
+      const y = horizonY + Math.pow(t, 2.2) * (h - horizonY);
+      const leftX = vanishX + (0 - vanishX) * (1 - t);
+      const rightX = vanishX + (w - vanishX) * (1 - t);
+      ctx.beginPath();
+      ctx.moveTo(leftX, y);
+      ctx.lineTo(rightX, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Simple 3D-ish wireframe objects projected onto the 2D canvas
+    function rotX(v, a) {
+      const s = Math.sin(a);
+      const c = Math.cos(a);
+      return { x: v.x, y: v.y * c - v.z * s, z: v.y * s + v.z * c };
+    }
+    function rotY(v, a) {
+      const s = Math.sin(a);
+      const c = Math.cos(a);
+      return { x: v.x * c + v.z * s, y: v.y, z: -v.x * s + v.z * c };
+    }
+    function rotZ(v, a) {
+      const s = Math.sin(a);
+      const c = Math.cos(a);
+      return { x: v.x * c - v.y * s, y: v.x * s + v.y * c, z: v.z };
+    }
+    function project(v) {
+      // Fake camera similar to your reference: camera ~ (0, 3, 13)
+      // Shift depth so everything stays in front.
+      const depth = Math.max(1, v.z + 16);
+      const f = w * 1.15;
+      return {
+        x: w * 0.5 + (v.x * f) / depth,
+        y: h * 0.62 - (v.y * f) / depth,
+      };
+    }
+
+    function drawEdges(verts, edges, stroke, alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < edges.length; i++) {
+        const [a, b] = edges[i];
+        const p0 = project(verts[a]);
+        const p1 = project(verts[b]);
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    // Base primitives (unit-ish)
+    const cubeVerts = [
+      { x: -1, y: -1, z: -1 },
+      { x: 1, y: -1, z: -1 },
+      { x: 1, y: 1, z: -1 },
+      { x: -1, y: 1, z: -1 },
+      { x: -1, y: -1, z: 1 },
+      { x: 1, y: -1, z: 1 },
+      { x: 1, y: 1, z: 1 },
+      { x: -1, y: 1, z: 1 },
+    ];
+    const cubeEdges = [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+      [4, 5],
+      [5, 6],
+      [6, 7],
+      [7, 4],
+      [0, 4],
+      [1, 5],
+      [2, 6],
+      [3, 7],
+    ];
+
+    const pyrVerts = [
+      { x: -1, y: -1, z: -1 },
+      { x: 1, y: -1, z: -1 },
+      { x: 1, y: -1, z: 1 },
+      { x: -1, y: -1, z: 1 },
+      { x: 0, y: 1.3, z: 0 },
+    ];
+    const pyrEdges = [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+      [0, 4],
+      [1, 4],
+      [2, 4],
+      [3, 4],
+    ];
+
+    const numObjects = (Math.random() * 10 + 6) | 0;
+    for (let i = 0; i < numObjects; i++) {
+      const isCube = Math.random() < 0.55;
+      const baseV = isCube ? cubeVerts : pyrVerts;
+      const baseE = isCube ? cubeEdges : pyrEdges;
+
+      const sx = Math.random() > 0.75 ? rand(0.25, 2.2) : rand(0.35, 1.6);
+      const sy = Math.random() > 0.75 ? rand(0.25, 2.2) : sx;
+      const sz = Math.random() > 0.75 ? rand(0.25, 2.2) : sx;
+      const rx = rand(0, Math.PI * 2);
+      const ry = rand(0, Math.PI * 2);
+      const rz = rand(0, Math.PI * 2);
+      const tx = rand(-12, 12);
+      const ty = rand(-2, 6);
+      const tz = rand(-8, 5);
+
+      const transformed = baseV.map((v) => {
+        let p = { x: v.x * sx, y: v.y * sy, z: v.z * sz };
+        p = rotX(p, rx);
+        p = rotY(p, ry);
+        p = rotZ(p, rz);
+        return { x: p.x + tx, y: p.y + ty, z: p.z + tz };
+      });
+
+      drawEdges(transformed, baseE, pick(), 0.85);
+    }
+
+    // Restore transform for subsequent UI drawing (strokes/stickers).
+    const dpr = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
   }
 
   // Check if color is light (used by the default canvas render)
@@ -1795,6 +2185,16 @@
   // Canvas pointer interactions (place / drag / remove stickers)
   canvas.style.touchAction = "none";
 
+  function isResizeHandleHit(p, sticker) {
+    if (!sticker) return false;
+    // Resize handle is a small zone at the bottom-right of the sticker.
+    // Drag-to-move is the default; resize requires Shift or hitting this handle.
+    const HANDLE = 10;
+    const brX = sticker.x + sticker.size / 2;
+    const brY = sticker.y + sticker.size / 2;
+    return Math.abs(p.x - brX) <= HANDLE && Math.abs(p.y - brY) <= HANDLE;
+  }
+
   function beginStroke(p) {
     if (!drawLayerCtx) return;
     isDrawing = true;
@@ -1830,12 +2230,25 @@
 
     const hit = findTopStickerAt(p.x, p.y);
     if (hit) {
-      // Start resizing the sticker
-      resizingSticker = hit;
-      resizeStartY = p.y;
-      resizeStartSize = hit.size;
+      const wantsResize = e.shiftKey || isResizeHandleHit(p, hit);
+      if (wantsResize) {
+        // Resize
+        resizingSticker = hit;
+        resizeStartY = p.y;
+        resizeStartSize = hit.size;
+        canvas.setPointerCapture?.(e.pointerId);
+        setCursor("nwse-resize");
+        e.preventDefault();
+        return;
+      }
+
+      // Drag-to-move
+      draggingSticker = hit;
+      dragStickerOffsetX = p.x - hit.x;
+      dragStickerOffsetY = p.y - hit.y;
       canvas.setPointerCapture?.(e.pointerId);
-      setCursor("nwse-resize");
+      setCursor("grabbing");
+      setStatus("移動 Move sticker");
       e.preventDefault();
       return;
     }
@@ -1884,6 +2297,15 @@
       return;
     }
 
+    // Dragging a sticker
+    if (draggingSticker != null) {
+      draggingSticker.x = p.x - dragStickerOffsetX;
+      draggingSticker.y = p.y - dragStickerOffsetY;
+      clampStickerToCanvas(draggingSticker);
+      renderCanvas({ keepArt: true });
+      return;
+    }
+
     if (isDrawing) {
       extendStroke(p);
       renderCanvas({ keepArt: true });
@@ -1892,17 +2314,21 @@
 
     const hit = findTopStickerAt(p.x, p.y);
     if (hit) {
-      setCursor("nwse-resize");
+      setCursor(isResizeHandleHit(p, hit) ? "nwse-resize" : "grab");
     } else {
       setCursor(selectedSticker ? "copy" : "crosshair");
     }
   });
 
   function stopStickerResize() {
-    if (resizingSticker == null) return;
+    const hadResize = resizingSticker != null;
+    const hadDrag = draggingSticker != null;
     resizingSticker = null;
-    setCursor(selectedSticker ? "copy" : "crosshair");
-    setStatus("ステッカー Stickers\u3000選んでクリックで配置");
+    draggingSticker = null;
+    if (hadResize || hadDrag) {
+      setCursor(selectedSticker ? "copy" : "crosshair");
+      setStatus("ステッカー Stickers\u3000選んでクリックで配置");
+    }
   }
 
   canvas.addEventListener("pointerup", () => {
@@ -2129,7 +2555,7 @@
       antialias: true,
       powerPreference: "high-performance",
     });
-    genRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    genRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     genRenderer.outputEncoding = THREE.sRGBEncoding;
     genRenderer.setClearColor(0x000000, 0);
 
@@ -2206,7 +2632,6 @@
     const windowMat = new THREE.MeshPhysicalMaterial({
       color: 0x0b0b0b,
       transmission: 0.85,
-      thickness: 0.6,
       roughness: 0.05,
     });
 
@@ -2412,6 +2837,19 @@
       if (!state.dragging || state.inserted) return;
 
       // Add a little spin based on drag motion.
+      if (state.rotationLocked) {
+        // Don't allow rotation until the cassette is fully out of the PC.
+        state.x = e.clientX - dragOffsetX;
+        state.y = e.clientY - dragOffsetY;
+
+        cassetteEl.style.left = state.x + "px";
+        cassetteEl.style.top = state.y + "px";
+
+        // Check if over player section
+        checkPlayerDropZoneForCassette(cassetteEl);
+        return;
+      }
+
       const tuning = VEKTROID.cassetteTuning;
       const dx = e.clientX - lastClientX;
       const dy = e.clientY - lastClientY;
@@ -2427,7 +2865,7 @@
       cassetteEl.style.top = state.y + "px";
 
       // Check if over player section
-      checkPlayerDropZone(state.x, state.y);
+      checkPlayerDropZoneForCassette(cassetteEl);
     });
 
     cassetteEl.addEventListener("pointerup", (e) => {
@@ -2436,8 +2874,16 @@
       cassetteEl.classList.remove("is-dragging");
       cassetteEl.releasePointerCapture(e.pointerId);
 
+      // Ensure the final drop position reflects the actual pointerup point.
+      // Without this, a quick release can use stale coordinates from the last
+      // pointermove, which makes the first drop miss the zone.
+      state.x = e.clientX - dragOffsetX;
+      state.y = e.clientY - dragOffsetY;
+      cassetteEl.style.left = state.x + "px";
+      cassetteEl.style.top = state.y + "px";
+
       // Check if dropped on player
-      tryInsertCassette(state.x, state.y);
+      tryInsertCassetteForCassette(cassetteEl);
     });
 
     cassetteEl.addEventListener("pointercancel", () => {
@@ -2461,6 +2907,70 @@
     return inZone;
   }
 
+  function getElementViewportCenter(el) {
+    if (!el) return { x: 0, y: 0 };
+    const rect = el.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+  }
+
+  function rectOverlapRatio(a, b) {
+    const x = Math.max(
+      0,
+      Math.min(a.right, b.right) - Math.max(a.left, b.left),
+    );
+    const y = Math.max(
+      0,
+      Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top),
+    );
+    const inter = x * y;
+    const areaA = Math.max(1, a.width * a.height);
+    return inter / areaA;
+  }
+
+  function isCassetteOverPlayer(cassetteEl, playerSection) {
+    if (!cassetteEl || !playerSection) return false;
+    const cassetteRect = cassetteEl.getBoundingClientRect();
+    const playerRect = playerSection.getBoundingClientRect();
+
+    const c = getElementViewportCenter(cassetteEl);
+    const centerIn =
+      c.y > playerRect.top &&
+      c.y < playerRect.bottom &&
+      c.x > playerRect.left &&
+      c.x < playerRect.right;
+
+    // If the cassette overlaps the player by a meaningful amount, count it.
+    // This avoids “drop twice” when the cursor is inside the cassette but not inside the player.
+    const overlap = rectOverlapRatio(cassetteRect, playerRect);
+    return centerIn || overlap >= 0.12;
+  }
+
+  function checkPlayerDropZoneForCassette(cassetteEl) {
+    const playerSection = document.getElementById("player-section");
+    if (!playerSection) return false;
+    const inZone = isCassetteOverPlayer(cassetteEl, playerSection);
+    playerSection.classList.toggle("drop-active", inZone);
+    return inZone;
+  }
+
+  function tryInsertCassetteForCassette(cassetteEl) {
+    const playerSection = document.getElementById("player-section");
+    if (!playerSection) return;
+
+    playerSection.classList.remove("drop-active");
+
+    if (isCassetteOverPlayer(cassetteEl, playerSection)) {
+      // Dock to the player's insert spot, then hand off to the player.
+      // Rotation into the correct orientation is handled by the player insert animation.
+      dockCassetteToPlayerStart()
+        .then(() => insertCassetteIntoPlayer())
+        .catch(() => insertCassetteIntoPlayer());
+    }
+  }
+
   function tryInsertCassette(x, y) {
     const playerSection = document.getElementById("player-section");
     if (!playerSection) return;
@@ -2472,16 +2982,50 @@
       y > rect.top && y < rect.bottom && x > rect.left && x < rect.right;
 
     if (inZone) {
-      // Smoothly move the floating cassette to the player's "start" position
-      // so the insertion animation feels continuous.
+      // Dock to the player's insert spot, then hand off to the player.
+      // Rotation into the correct orientation is handled by the player insert animation.
       dockCassetteToPlayerStart()
-        .then(() => {
-          insertCassetteIntoPlayer();
-        })
-        .catch(() => {
-          insertCassetteIntoPlayer();
-        });
+        .then(() => insertCassetteIntoPlayer())
+        .catch(() => insertCassetteIntoPlayer());
     }
+  }
+
+  function spinFloatingCassetteOnce() {
+    const state = getCassetteState();
+    if (state.inserted) return Promise.resolve();
+    if (!floatCassette) return Promise.resolve();
+
+    // Avoid double-start.
+    if (state.spinning) return Promise.resolve();
+    state.spinning = true;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (prefersReducedMotion) {
+      state.spinning = false;
+      return Promise.resolve();
+    }
+
+    // Override float loop auto-spin for the duration.
+    state.spinOverride = {
+      t0: performance.now(),
+      d: VEKTROID.cassetteTuning?.spin?.dropOnceMs ?? 900,
+      y0: floatCassette.rotation.y,
+      y1: floatCassette.rotation.y + Math.PI * 2,
+    };
+
+    return new Promise((resolve) => {
+      const check = () => {
+        if (!state.spinOverride) {
+          state.spinning = false;
+          resolve();
+          return;
+        }
+        requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
   }
 
   function dockCassetteToPlayerStart() {
@@ -2494,6 +3038,11 @@
     // Avoid double-start.
     if (state.inFlight) return Promise.resolve();
     state.inFlight = true;
+
+    // Freeze rotation while docking so we don't get an extra spin.
+    // The player insertion animation handles the final orientation.
+    state.spinOverride = null;
+    state.spinning = false;
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -2518,7 +3067,7 @@
       return Promise.resolve();
     }
 
-    const durationMs = 420;
+    const durationMs = tuning?.playerDock?.durationMs ?? 900;
     const t0 = performance.now();
 
     return new Promise((resolve) => {
@@ -2543,7 +3092,9 @@
 
   // Allow the player "INSERT" button to use the same visual insertion.
   VEKTROID.animateFloatingCassetteIntoPlayer = function () {
-    insertCassetteIntoPlayer();
+    dockCassetteToPlayerStart()
+      .then(() => insertCassetteIntoPlayer())
+      .catch(() => insertCassetteIntoPlayer());
   };
 
   function insertCassetteIntoPlayer() {
@@ -2567,14 +3118,18 @@
         floatScene.remove(mesh);
     } catch (_) {}
 
-    cassetteEl.style.transition = "opacity 220ms ease";
+    cassetteEl.style.transition = "opacity 420ms ease";
     cassetteEl.style.opacity = "0";
 
     if (
       window.VEKTROID &&
       typeof window.VEKTROID.insertGeneratedTape === "function"
     ) {
-      window.VEKTROID.insertGeneratedTape({ mesh, startX: 6, durationMs: 650 });
+      window.VEKTROID.insertGeneratedTape({
+        mesh,
+        startX: 6,
+        durationMs: 1200,
+      });
     }
 
     // Detach from the floating system so later spawns build a fresh mesh.
@@ -2586,7 +3141,7 @@
       cassetteEl.style.opacity = "";
       cassetteEl.style.transition = "";
       floatStop();
-    }, 900);
+    }, 1300);
   }
 
   function forcePcZoomOut() {
@@ -2614,7 +3169,7 @@
     "scroll",
     () => {
       const state = getCassetteState();
-      if (!state.created || state.inserted) {
+      if (!state.created || state.inserted || state.rotationLocked) {
         lastScrollY = window.scrollY || 0;
         return;
       }
@@ -2661,7 +3216,7 @@
         antialias: true,
         powerPreference: "high-performance",
       });
-      floatRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      floatRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       floatRenderer.outputEncoding = THREE.sRGBEncoding;
       floatRenderer.setClearColor(0x000000, 0);
 
@@ -2740,35 +3295,75 @@
     floatRaf = requestAnimationFrame(floatLoop);
 
     const t = now * 0.001;
+    const state = getCassetteState();
+    const lockRotation = state.rotationLocked || state.inFlight;
 
     if (floatSpawn && floatCassette) {
       const p = Math.min(1, Math.max(0, (now - floatSpawn.t0) / floatSpawn.d));
       const e = 1 - Math.pow(1 - p, 3);
       floatCassette.position[floatSpawn.axis] =
         floatSpawn.v0 + (floatSpawn.v1 - floatSpawn.v0) * e;
-      if (p >= 1) floatSpawn = null;
+      if (p >= 1) {
+        floatSpawn = null;
+        state.rotationLocked = false;
+      }
     }
 
-    if (floatCassette?.userData?.leftReel) {
+    if (floatCassette?.userData?.leftReel && !lockRotation) {
       floatCassette.userData.leftReel.rotation.y -= 0.06;
       floatCassette.userData.rightReel.rotation.y += 0.06;
     }
 
     if (floatCassette) {
-      // Gentle idle floating animation
-      floatCassette.position.y = Math.sin(t * 1.1) * 0.02;
+      // Gentle idle floating animation (disabled while still ejecting)
+      floatCassette.position.y = lockRotation ? 0 : Math.sin(t * 1.1) * 0.02;
 
       const tuning = VEKTROID.cassetteTuning;
       const damping = tuning?.spin?.damping ?? 0.92;
+      function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
 
-      // Slow auto-rotation + user-driven spin impulse
-      floatCassette.rotation.x += floatRotVel.x;
-      floatCassette.rotation.y += 0.003 + floatRotVel.y;
-      floatCassette.rotation.z += floatRotVel.z || 0;
+      const spinOverride = state?.spinOverride;
+      if (spinOverride) {
+        const p = Math.min(
+          1,
+          Math.max(0, (now - spinOverride.t0) / Math.max(1, spinOverride.d)),
+        );
+        const e = easeInOutCubic(p);
+        floatCassette.rotation.y =
+          spinOverride.y0 + (spinOverride.y1 - spinOverride.y0) * e;
+        // Keep x/z still influenced by velocity so it doesn't look frozen.
+        floatCassette.rotation.x += floatRotVel.x;
+        floatCassette.rotation.z += floatRotVel.z || 0;
+        // Damp impulse while overridden so it settles.
+        floatRotVel.x *= damping;
+        floatRotVel.y *= damping;
+        floatRotVel.z *= damping;
+        if (p >= 1) state.spinOverride = null;
+      } else {
+        if (lockRotation) {
+          // Keep perfectly still while ejecting OR docking to the player.
+          const tuning = VEKTROID.cassetteTuning;
+          floatCassette.rotation.set(
+            tuning?.rotation?.x ?? Math.PI / 2,
+            tuning?.rotation?.y ?? Math.PI,
+            tuning?.rotation?.z ?? Math.PI / 2,
+          );
+          floatRotVel.x = 0;
+          floatRotVel.y = 0;
+          floatRotVel.z = 0;
+        } else {
+          // Slow auto-rotation + user-driven spin impulse
+          floatCassette.rotation.x += floatRotVel.x;
+          floatCassette.rotation.y += 0.003 + floatRotVel.y;
+          floatCassette.rotation.z += floatRotVel.z || 0;
 
-      floatRotVel.x *= damping;
-      floatRotVel.y *= damping;
-      floatRotVel.z *= damping;
+          floatRotVel.x *= damping;
+          floatRotVel.y *= damping;
+          floatRotVel.z *= damping;
+        }
+      }
     }
 
     floatRenderer.render(floatScene, floatCamera);
@@ -2791,6 +3386,14 @@
     }
 
     if (floatCassette) {
+      // Freeze rotation until the ejection completes.
+      state.rotationLocked = true;
+      state.spinOverride = null;
+      state.spinning = false;
+      floatRotVel.x = 0;
+      floatRotVel.y = 0;
+      floatRotVel.z = 0;
+
       // Start tucked in, then slide out straight (mesh-space axis).
       const tuning = VEKTROID.cassetteTuning;
       const axis = tuning?.eject?.axis ?? "z";
@@ -3015,20 +3618,28 @@
   camera.position.set(8, 5, 8);
   camera.lookAt(0, 0, 0);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    powerPreference: "high-performance",
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(width, height);
   renderer.setClearColor(0x000000, 0);
   // Match encoding used by the hero/floating cassette renderers.
   // Without this, colors can look darker/muddier and the cassette handoff feels like a lighting snap.
   renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.shadowMap.enabled = true;
+
+  const lowPowerDevice =
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+  renderer.shadowMap.enabled = !lowPowerDevice;
   container.appendChild(renderer.domElement);
 
   // Vaporwave Lighting
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
   dirLight.position.set(5, 10, 7);
-  dirLight.castShadow = true;
+  dirLight.castShadow = !lowPowerDevice;
   scene.add(dirLight);
 
   const pinkLight = new THREE.PointLight(0xff71ce, 2, 20);
@@ -3064,12 +3675,6 @@
     metalness: 0.8,
     emissive: 0xff71ce,
     emissiveIntensity: 0.2,
-  });
-  const windowMat = new THREE.MeshPhysicalMaterial({
-    color: 0x111111,
-    transmission: 0.2,
-    thickness: 1,
-    roughness: 0.1,
   });
   const innerDarkMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
@@ -3130,6 +3735,174 @@
   const buttons = [];
   const btnColors = [0xff71ce, 0x01cdfe, 0xb967ff, 0x05ffa1];
 
+  function createButtonLabelTexture(text) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // High-contrast label plate
+    ctx.fillStyle = "rgba(245,245,245,0.98)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Border
+    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+
+    // Text
+    ctx.fillStyle = "rgba(0,0,0,0.92)";
+    ctx.font = "900 56px VT323, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      String(text || "").toUpperCase(),
+      canvas.width / 2,
+      canvas.height / 2 + 2,
+    );
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  function addLabelToButton(btn, labelText) {
+    if (!btn) return;
+    const tex = createButtonLabelTexture(labelText);
+    if (!tex) return;
+
+    // A thin plane hovering slightly above the top face.
+    const labelGeo = new THREE.PlaneGeometry(0.72, 0.28);
+    const labelMat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+    });
+    const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+    labelMesh.rotation.x = -Math.PI / 2;
+    labelMesh.position.set(0, 0.155, 0);
+
+    // Don't interfere with button raycasting; the button itself remains clickable.
+    labelMesh.raycast = function () {};
+
+    btn.add(labelMesh);
+  }
+
+  const buttonLabels = {
+    stop: "STOP",
+    rewind: "PREV",
+    play: "PLAY",
+    ff: "NEXT",
+  };
+
+  function createPlayerFrontLegendTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Slightly translucent dark plate so it reads on the chassis.
+    ctx.fillStyle = "rgba(10, 10, 18, 0.85)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Neon border
+    ctx.strokeStyle = "rgba(1, 205, 254, 0.85)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+    // Helper: icon drawing (simple, readable)
+    function drawStopIcon(x, y, s, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+    function drawPlayIcon(x, y, s, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.45, y - s * 0.55);
+      ctx.lineTo(x - s * 0.45, y + s * 0.55);
+      ctx.lineTo(x + s * 0.6, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    function drawPrevIcon(x, y, s, color) {
+      ctx.fillStyle = color;
+      // bar
+      ctx.fillRect(x + s * 0.35, y - s * 0.55, s * 0.18, s * 1.1);
+      // triangle
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.25, y);
+      ctx.lineTo(x - s * 0.55, y - s * 0.55);
+      ctx.lineTo(x - s * 0.55, y + s * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+    function drawNextIcon(x, y, s, color) {
+      ctx.fillStyle = color;
+      // bar
+      ctx.fillRect(x - s * 0.53, y - s * 0.55, s * 0.18, s * 1.1);
+      // triangle
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.25, y - s * 0.55);
+      ctx.lineTo(x - s * 0.25, y + s * 0.55);
+      ctx.lineTo(x + s * 0.55, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    const items = [
+      { x: 0.18, label: "STOP", color: "#ff71ce", icon: "stop" },
+      { x: 0.39, label: "PREV", color: "#01cdfe", icon: "prev" },
+      { x: 0.61, label: "PLAY", color: "#b967ff", icon: "play" },
+      { x: 0.82, label: "NEXT", color: "#05ffa1", icon: "next" },
+    ];
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 54px VT323, monospace";
+
+    for (const item of items) {
+      const x = Math.round(canvas.width * item.x);
+      const iconY = Math.round(canvas.height * 0.42);
+      const textY = Math.round(canvas.height * 0.72);
+      const s = 56;
+
+      if (item.icon === "stop") drawStopIcon(x, iconY, 48, item.color);
+      if (item.icon === "prev") drawPrevIcon(x, iconY, s, item.color);
+      if (item.icon === "play") drawPlayIcon(x, iconY, s, item.color);
+      if (item.icon === "next") drawNextIcon(x, iconY, s, item.color);
+
+      // Text with a subtle glow
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillText(item.label, x + 2, textY + 3);
+      ctx.fillStyle = item.color;
+      ctx.fillText(item.label, x, textY);
+    }
+
+    // Simple “logo” in the center
+    ctx.font = "900 44px VT323, monospace";
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillText(
+      "VEKTROID",
+      canvas.width / 2,
+      Math.round(canvas.height * 0.14),
+    );
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
   function createBtn(x, colorIndex, name) {
     const geo = new THREE.BoxGeometry(0.8, 0.3, 0.4);
     const mat = new THREE.MeshStandardMaterial({
@@ -3143,6 +3916,10 @@
     btn.position.set(x, 2.65, 0);
     btn.castShadow = true;
     btn.userData = { isButton: true, name: name, originalY: 2.65 };
+
+    // Add a readable label on the top face.
+    addLabelToButton(btn, buttonLabels[name] || name);
+
     playerGroup.add(btn);
     buttons.push(btn);
   }
@@ -3151,6 +3928,25 @@
   createBtn(-0.5, 1, "rewind");
   createBtn(0.5, 2, "play");
   createBtn(1.5, 3, "ff");
+
+  // Front legend (below the buttons) for readability.
+  (function addPlayerFrontLegend() {
+    const tex = createPlayerFrontLegendTexture();
+    if (!tex) return;
+
+    const legendGeo = new THREE.PlaneGeometry(4.1, 0.95);
+    const legendMat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+    });
+    const legend = new THREE.Mesh(legendGeo, legendMat);
+
+    // Place just in front of the chassis front face, under the buttons.
+    legend.position.set(0, 2.08, 0.78);
+    legend.raycast = function () {};
+    playerGroup.add(legend);
+  })();
 
   // Cassette Tape with vaporwave styling
   const tapeGroup = new THREE.Group();
@@ -4045,6 +4841,8 @@
         targetGroup: mesh,
         rotateFrom: startRot,
         rotateTo: targetRot,
+        rotateFirst: true,
+        rotateMs: 420,
       });
       return;
     }
@@ -4058,7 +4856,7 @@
 
     // Smoothly orient the whole player and cassette to look better on insert.
     animatePlayerToFront(
-      typeof opts.playerRotateMs === "number" ? opts.playerRotateMs : 650,
+      typeof opts.playerRotateMs === "number" ? opts.playerRotateMs : 950,
     );
 
     // Only show the tape once we start inserting.
@@ -4068,35 +4866,76 @@
     const startX =
       typeof opts.startX === "number" ? opts.startX : targetGroup.position.x;
     const endX = 0;
-    const t0 = performance.now();
-    const dur = typeof opts.durationMs === "number" ? opts.durationMs : 650;
-
+    const moveDur =
+      typeof opts.durationMs === "number" ? opts.durationMs : 1200;
     const rotateFrom = opts.rotateFrom || targetGroup.rotation.clone();
     const rotateTo = opts.rotateTo || targetGroup.rotation.clone();
+    const rotateFirst = opts.rotateFirst !== false;
+    const rotateDur = typeof opts.rotateMs === "number" ? opts.rotateMs : 420;
 
     targetGroup.position.x = startX;
 
-    function step(now) {
-      const p = Math.min(1, Math.max(0, (now - t0) / dur));
-      const e = 1 - Math.pow(1 - p, 3);
-      targetGroup.position.x = startX + (endX - startX) * e;
-
-      // Rotate smoothly during the travel so the front reads nicely.
-      targetGroup.rotation.x = rotateFrom.x + (rotateTo.x - rotateFrom.x) * e;
-      targetGroup.rotation.y = rotateFrom.y + (rotateTo.y - rotateFrom.y) * e;
-      targetGroup.rotation.z = rotateFrom.z + (rotateTo.z - rotateFrom.z) * e;
-      if (p < 1) {
-        requestAnimationFrame(step);
-        return;
-      }
-
+    function finish() {
       targetGroup.position.set(0, 0.25, 0);
       tapeInserted = true;
       loadTrack(0);
       setStatus("ロード完了 LOADED", "#01cdfe");
     }
 
-    requestAnimationFrame(step);
+    function easeInOut(p) {
+      return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    }
+
+    const needsRotate =
+      Math.abs(rotateFrom.x - rotateTo.x) > 1e-4 ||
+      Math.abs(rotateFrom.y - rotateTo.y) > 1e-4 ||
+      Math.abs(rotateFrom.z - rotateTo.z) > 1e-4;
+
+    const startMove = () => {
+      const t1 = performance.now();
+      function stepMove(now) {
+        const p = Math.min(1, Math.max(0, (now - t1) / moveDur));
+        const e = easeInOut(p);
+        targetGroup.position.x = startX + (endX - startX) * e;
+
+        // Hold the final orientation during travel.
+        targetGroup.rotation.copy(rotateTo);
+
+        if (p < 1) {
+          requestAnimationFrame(stepMove);
+          return;
+        }
+        finish();
+      }
+      requestAnimationFrame(stepMove);
+    };
+
+    if (!rotateFirst || !needsRotate || rotateDur <= 0) {
+      // Old behavior, but without rotation during travel.
+      targetGroup.rotation.copy(rotateTo);
+      startMove();
+      return;
+    }
+
+    // Phase 1: flip into position (rotate in place)
+    const t0 = performance.now();
+    function stepRotate(now) {
+      const p = Math.min(1, Math.max(0, (now - t0) / rotateDur));
+      const e = easeInOut(p);
+      targetGroup.rotation.x = rotateFrom.x + (rotateTo.x - rotateFrom.x) * e;
+      targetGroup.rotation.y = rotateFrom.y + (rotateTo.y - rotateFrom.y) * e;
+      targetGroup.rotation.z = rotateFrom.z + (rotateTo.z - rotateFrom.z) * e;
+      targetGroup.position.x = startX;
+
+      if (p < 1) {
+        requestAnimationFrame(stepRotate);
+        return;
+      }
+      // Ensure exact end rotation, then move.
+      targetGroup.rotation.copy(rotateTo);
+      startMove();
+    }
+    requestAnimationFrame(stepRotate);
   }
 
   // Start/stop loop based on visibility
@@ -4178,4 +5017,110 @@
 
   // Initial check
   updateNavbarVisibility();
+})();
+
+/* ============================================
+           HERO VAPORWAVE AMBIENCE FX
+           ============================================ */
+(function () {
+  const hero = document.getElementById("hero");
+  if (!hero) return;
+
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+
+  // Clouds behind hero content
+  if (!hero.querySelector(".hero-clouds")) {
+    const clouds = document.createElement("div");
+    clouds.className = "hero-clouds";
+    hero.prepend(clouds);
+  }
+
+  // Subtle clouds in player section too
+  const playerSection = document.getElementById("player-section");
+  if (playerSection && !playerSection.querySelector(".section-clouds")) {
+    const clouds = document.createElement("div");
+    clouds.className = "section-clouds";
+    playerSection.prepend(clouds);
+  }
+
+  function rand(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  function spawnErrorPopup() {
+    const popup = document.createElement("div");
+    popup.className = "hero-error-popup";
+
+    const msgs = [
+      {
+        title: "Microsoft Windows",
+        body: "The system has recovered from a serious error.<br><b>0xVAP0R00</b> at <b>0xDEAD:BEEF</b>.",
+      },
+      {
+        title: "Explorer.exe",
+        body: "An illegal operation was detected in the aesthetics subsystem.<br>Operation will continue.",
+      },
+      {
+        title: "VHS Driver",
+        body: "Tracking signal lost.<br>Attempting auto-calibration…",
+      },
+      {
+        title: "System",
+        body: "GLITCH DETECTED.<br>Ignoring request and rendering anyway.",
+      },
+    ];
+    const pick = msgs[Math.floor(Math.random() * msgs.length)];
+
+    popup.innerHTML =
+      '<div class="titlebar"><span>' +
+      pick.title +
+      '</span><span class="close">✕</span></div>' +
+      '<div class="body"><img class="icon" src="image_paint/warning.png" alt="" aria-hidden="true"><div class="msg">' +
+      pick.body +
+      "</div></div>" +
+      '<div class="buttons"><span class="btn">OK</span></div>';
+
+    // Position: keep it away from edges and roughly near the title.
+    const x = 6 + Math.random() * 70;
+    const y = 10 + Math.random() * 35;
+    popup.style.left = x + "%";
+    popup.style.top = y + "%";
+    hero.appendChild(popup);
+    setTimeout(() => popup.remove(), 2400);
+  }
+
+  let popupTimer = 0;
+
+  function schedulePopup() {
+    spawnErrorPopup();
+    popupTimer = window.setTimeout(
+      schedulePopup,
+      Math.round(rand(9000, 15000)),
+    );
+  }
+
+  function start() {
+    if (prefersReducedMotion) return;
+    if (!popupTimer)
+      popupTimer = window.setTimeout(
+        schedulePopup,
+        Math.round(rand(4500, 8500)),
+      );
+  }
+  function stop() {
+    if (popupTimer) window.clearTimeout(popupTimer);
+    popupTimer = 0;
+  }
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      const inView = entries.some((e) => e.isIntersecting);
+      if (inView) start();
+      else stop();
+    },
+    { threshold: 0.25 },
+  );
+  io.observe(hero);
 })();

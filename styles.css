@@ -273,6 +273,163 @@ section::after {
   );
 }
 
+/* Hero vaporwave clouds (subtle, behind content) */
+.hero-clouds {
+  position: absolute;
+  inset: -12% -12% -12% -12%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  filter: blur(0.6px) saturate(1.35);
+  background-image:
+    radial-gradient(
+      closest-side at 18% 35%,
+      rgba(255, 113, 206, 0.55),
+      rgba(255, 113, 206, 0) 62%
+    ),
+    radial-gradient(
+      closest-side at 32% 55%,
+      rgba(185, 103, 255, 0.42),
+      rgba(185, 103, 255, 0) 66%
+    ),
+    radial-gradient(
+      closest-side at 68% 42%,
+      rgba(185, 103, 255, 0.45),
+      rgba(185, 103, 255, 0) 64%
+    ),
+    radial-gradient(
+      closest-side at 78% 62%,
+      rgba(255, 113, 206, 0.38),
+      rgba(255, 113, 206, 0) 68%
+    );
+  animation: heroCloudDrift 18s linear infinite;
+}
+
+@keyframes heroCloudDrift {
+  0% {
+    transform: translate3d(-1.5%, -0.5%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(1.5%, 0.8%, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(-1.5%, -0.5%, 0) scale(1);
+  }
+}
+
+/* XP-ish error popup (auto disappears quickly) */
+.hero-error-popup {
+  position: absolute;
+  width: 280px;
+  pointer-events: none;
+  z-index: 7;
+  background: #c0c0c0;
+  border: 1px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  box-shadow:
+    inset 1px 1px 0 #dfdfdf,
+    inset -1px -1px 0 #0a0a0a,
+    8px 8px 18px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.95);
+  animation: heroErrorPopup 2200ms ease 1;
+}
+
+.hero-error-popup .titlebar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  padding: 6px 8px;
+  font-family: Tahoma, sans-serif;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero-error-popup .body {
+  padding: 10px 10px 12px;
+  font-family: Tahoma, sans-serif;
+  font-size: 12px;
+  color: #000;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.hero-error-popup .msg b {
+  font-weight: 700;
+}
+
+.hero-error-popup .buttons {
+  padding: 0 10px 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hero-error-popup .btn {
+  display: inline-block;
+  min-width: 64px;
+  text-align: center;
+  padding: 4px 10px;
+  background: #dfdfdf;
+  border: 1px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  box-shadow: inset 1px 1px 0 #ffffff;
+  font-family: Tahoma, sans-serif;
+  font-size: 12px;
+}
+
+.hero-error-popup .icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  image-rendering: auto;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.18));
+}
+
+@keyframes heroErrorPopup {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Subtle clouds for player section too */
+#player-section .section-clouds {
+  position: absolute;
+  inset: -12% -12% -12% -12%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.12;
+  mix-blend-mode: screen;
+  filter: blur(0.8px) saturate(1.25);
+  background-image:
+    radial-gradient(
+      closest-side at 25% 40%,
+      rgba(185, 103, 255, 0.35),
+      rgba(185, 103, 255, 0) 66%
+    ),
+    radial-gradient(
+      closest-side at 70% 55%,
+      rgba(255, 113, 206, 0.28),
+      rgba(255, 113, 206, 0) 70%
+    );
+  animation: heroCloudDrift 22s linear infinite;
+}
+
 /* Foreground shadow to fade forward wireframes into black */
 .hero-front-shadow {
   position: absolute;
@@ -601,15 +758,137 @@ section::after {
   background: #c0c0c0;
   border: 1px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
-  box-shadow:
-    inset 1px 1px 0 #dfdfdf,
-    inset -1px -1px 0 #0a0a0a,
-    4px 4px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 20;
   width: min(100%, 630px);
   margin: 28px auto 0;
   max-width: 608px;
+}
+
+/* Draw the WinXP-style inset border ABOVE the content so scrollable children
+   can't visually cover the bottom edge. */
+.paint-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow:
+    inset 1px 1px 0 #dfdfdf,
+    inset -1px -1px 0 #0a0a0a;
+}
+
+.paint-window > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+           GENERIC XP WINDOWS (Desktop)
+           ============================================ */
+.xp-window-wrapper {
+  position: absolute;
+  inset: 0;
+  padding: 14px;
+  padding-bottom: var(--xp-taskbar-h);
+  width: 100%;
+  height: 100%;
+  z-index: 55;
+  opacity: 0;
+  transform: scale(0.86);
+  pointer-events: none;
+  transition:
+    transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.24s ease;
+}
+
+.xp-window-wrapper.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.xp-window-wrapper.is-hiding {
+  opacity: 0;
+  transform: scale(0.86);
+  pointer-events: none;
+}
+
+.xp-window {
+  width: min(100%, 520px);
+  height: min(100%, 340px);
+  margin: 0 auto;
+  background: #ece9d8;
+  border: 1px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    6px 6px 16px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.xp-titlebar {
+  background: linear-gradient(90deg, #0a246a, #3a6ea5);
+  color: #fff;
+  padding: 3px 6px;
+  font-family: Tahoma, sans-serif;
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.xp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xp-title-icon {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+}
+
+.xp-titlebar-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.xp-titlebar-btn {
+  width: 18px;
+  height: 16px;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  color: #000;
+  font-size: 10px;
+  line-height: 10px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.xp-titlebar-btn:active {
+  border-color: #808080 #ffffff #ffffff #808080;
+}
+
+.xp-window-body {
+  flex: 1;
+  background: #fff;
+  border-top: 1px solid #808080;
+  padding: 10px;
+  overflow: auto;
+  font-family: Tahoma, sans-serif;
+  font-size: 11px;
+  color: #000;
+}
+
+.xp-window-placeholder {
+  opacity: 0.85;
 }
 
 .paint-titlebar {
@@ -1502,6 +1781,119 @@ button:focus {
   mix-blend-mode: screen;
 }
 
+/* Glowing nested vaporwave triangle behind the PC (static + centered) */
+.pc-vapor-triangles {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(108vw, 1040px);
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.85;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 20px rgba(1, 205, 254, 0.25))
+    drop-shadow(0 0 30px rgba(255, 113, 206, 0.18));
+}
+
+.pc-vapor-triangles svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pc-vapor-triangles .tri {
+  stroke-linejoin: round;
+}
+
+/* David image on the left with neon lighting overlays */
+.pc-david-wrap {
+  position: absolute;
+  left: clamp(14px, 5vw, 84px);
+  top: 50%;
+  transform: translateY(-46%);
+  width: min(32vw, 420px);
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.98;
+  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.55));
+}
+
+.pc-david-wrap::before,
+.pc-david-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -6% -10% -10% -10%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.pc-david-wrap::before {
+  background:
+    radial-gradient(
+      closest-side at 38% 28%,
+      rgba(1, 205, 254, 0.65),
+      rgba(1, 205, 254, 0) 62%
+    ),
+    radial-gradient(
+      closest-side at 66% 42%,
+      rgba(255, 113, 206, 0.55),
+      rgba(255, 113, 206, 0) 66%
+    );
+  filter: blur(0.7px);
+  opacity: 0.9;
+}
+
+.pc-david-wrap img {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Feather all edges to transparent */
+  -webkit-mask-image: radial-gradient(
+    120% 115% at 50% 42%,
+    rgba(0, 0, 0, 1) 58%,
+    rgba(0, 0, 0, 0.88) 70%,
+    rgba(0, 0, 0, 0.25) 86%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    120% 115% at 50% 42%,
+    rgba(0, 0, 0, 1) 58%,
+    rgba(0, 0, 0, 0.88) 70%,
+    rgba(0, 0, 0, 0.25) 86%,
+    transparent 100%
+  );
+  filter: saturate(1.7) contrast(1.18) brightness(1.06) hue-rotate(285deg)
+    drop-shadow(0 0 16px rgba(1, 205, 254, 0.32))
+    drop-shadow(0 0 22px rgba(255, 113, 206, 0.24));
+}
+
+@media (max-width: 900px) {
+  .pc-david-wrap {
+    width: min(34vw, 320px);
+    transform: translateY(-46%) translateX(-6px);
+    opacity: 0.9;
+  }
+
+  .pc-vapor-triangles {
+    width: min(86vw, 740px);
+    opacity: 0.75;
+  }
+}
+
+@media (max-width: 600px) {
+  .pc-david-wrap {
+    display: none;
+  }
+
+  .pc-vapor-triangles {
+    width: min(96vw, 720px);
+    transform: translate(-50%, -50%);
+    opacity: 0.62;
+  }
+}
+
 #pc-container {
   position: relative;
   width: min(90vw, 800px);
@@ -1531,8 +1923,8 @@ button:focus {
   --pc-power-size: 36px;
 
   /* Cassette reader anchor */
-  --pc-reader-x: 68%;
-  --pc-reader-y: 78%;
+  --pc-reader-x: 63%;
+  --pc-reader-y: 62%;
   --pc-reader-w: 16%;
   --pc-reader-h: 6%;
 }
@@ -1867,7 +2259,7 @@ button:focus {
   padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 16px;
   align-items: flex-start;
 }
 
@@ -1875,8 +2267,8 @@ button:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 24px;
-  height: 24px;
+  width: auto;
+  height: 20px;
   padding: 2px;
   cursor: pointer;
   border-radius: 4px;
@@ -1893,15 +2285,15 @@ button:focus {
 }
 
 .desktop-icon img {
-  width: 24px;
-  height: 24px;
+  width: 14px;
+  height: 14px;
   image-rendering: pixelated;
   margin-bottom: 2px;
 }
 
 .desktop-icon span {
   font-family: Tahoma, sans-serif;
-  font-size: 7.5px;
+  font-size: 0.3rem;
   color: white;
   text-align: center;
   text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
@@ -2285,6 +2677,24 @@ button:focus {
   filter: none;
   animation: floorMoveForward 2.6s linear infinite;
   will-change: background-position;
+
+  /* Fade the far end (top) into transparency */
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.25) 12%,
+    rgba(0, 0, 0, 0.9) 34%,
+    #000 55%,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.25) 12%,
+    rgba(0, 0, 0, 0.9) 34%,
+    #000 55%,
+    #000 100%
+  );
 }
 
 @keyframes floorMoveForward {

@@ -327,6 +327,45 @@
         <!-- Background FX (shooting stars + particle clouds) -->
         <canvas id="pc-bg-fx" aria-hidden="true"></canvas>
 
+        <!-- Vaporwave triangle glow behind the PC -->
+        <div class="pc-vapor-triangles" aria-hidden="true">
+            <svg viewBox="0 0 100 100" width="100" height="100" focusable="false" aria-hidden="true">
+                <defs>
+                    <linearGradient id="pcTriGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#01cdfe" stop-opacity="0.95" />
+                        <stop offset="55%" stop-color="#b967ff" stop-opacity="0.9" />
+                        <stop offset="100%" stop-color="#ff71ce" stop-opacity="0.95" />
+                    </linearGradient>
+                    <filter id="pcTriGlow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feGaussianBlur stdDeviation="1.2" result="blur" />
+                        <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -6"
+                            result="glow" />
+                        <feMerge>
+                            <feMergeNode in="glow" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
+                <polygon class="tri tri-outer" points="6,6 94,6 50,96" fill="none" stroke="url(#pcTriGrad)"
+                    stroke-width="1.6" filter="url(#pcTriGlow)" />
+                <polygon class="tri" points="12,12 88,12 50,93" fill="none" stroke="url(#pcTriGrad)" stroke-width="1.45"
+                    opacity="0.9" filter="url(#pcTriGlow)" />
+                <polygon class="tri" points="19,18 81,18 50,90" fill="none" stroke="url(#pcTriGrad)" stroke-width="1.32"
+                    opacity="0.86" filter="url(#pcTriGlow)" />
+                <polygon class="tri" points="26,26 74,26 50,86" fill="none" stroke="url(#pcTriGrad)" stroke-width="1.22"
+                    opacity="0.78" filter="url(#pcTriGlow)" />
+                <polygon class="tri" points="33,34 67,34 50,83" fill="none" stroke="url(#pcTriGrad)" stroke-width="1.12"
+                    opacity="0.7" filter="url(#pcTriGlow)" />
+                <polygon class="tri" points="40,44 60,44 50,80" fill="none" stroke="url(#pcTriGrad)" stroke-width="1.02"
+                    opacity="0.62" filter="url(#pcTriGlow)" />
+            </svg>
+        </div>
+
+        <!-- David figure + lighting overlays -->
+        <div class="pc-david-wrap" aria-hidden="true">
+            <img src="image_paint/david.webp" alt="" decoding="async" loading="lazy">
+        </div>
+
         <!-- Checkerboard floor -->
         <div class="vaporwave-floor">
         </div>
@@ -387,14 +426,24 @@
                 <!-- XP Desktop -->
                 <div id="xp-desktop" class="screen-content">
                     <div class="desktop-icons">
+                        <div class="desktop-icon" data-app="my-pc">
+                            <img src="image_paint/115.ico" alt="My PC"
+                                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect fill=%22%23333%22 width=%2248%22 height=%2248%22 rx=%224%22/><text x=%2224%22 y=%2231%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2218%22>PC</text></svg>'">
+                            <span>My PC<br>マイコン</span>
+                        </div>
+                        <div class="desktop-icon" data-app="folder">
+                            <img src="image_paint/23.ico" alt="Folder"
+                                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect fill=%22%23b59b00%22 width=%2248%22 height=%2248%22 rx=%224%22/><text x=%2224%22 y=%2231%22 text-anchor=%22middle%22 fill=%22black%22 font-size=%2216%22>DIR</text></svg>'">
+                            <span>Folder<br>フォルダ</span>
+                        </div>
                         <div class="desktop-icon" data-app="recycle-bin">
-                            <img src="image_paint/recycle-bin.png" alt="Recycle Bin"
+                            <img src="image_paint/918.ico" alt="Recycle Bin"
                                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect fill=%22%23888%22 width=%2248%22 height=%2248%22 rx=%224%22/><text x=%2224%22 y=%2232%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2220%22>🗑️</text></svg>'">
                             <span>Recycle Bin<br>ごみ箱</span>
                         </div>
                         <div class="desktop-icon" data-app="paint" id="paint-icon">
-                            <img src="image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png"
-                                alt="Paint">
+                            <img src="image_paint/mspaint.ico" alt="Paint"
+                                onerror="this.src='image_paint/hd-windows-xp-logo-icon-sign-png-701751694713908n79xquyu8a.png'">
                             <span>Paint.exe<br>ペイント</span>
                         </div>
                     </div>
@@ -495,7 +544,7 @@
     <!-- Footer -->
     <footer class="vapor-footer">
         <p class="footer-jp">私はあなたに会いたいです</p>
-        <p class="footer-text">© 2024 VEKTROID // ALL RIGHTS RESERVED // 全著作権所有</p>
+        <p class="footer-text">© 2026 VEKTROID // ALL RIGHTS RESERVED // 全著作権所有</p>
     </footer>
     <script src="main.js" defer></script>
 </body>
