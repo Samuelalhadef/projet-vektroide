@@ -80,7 +80,7 @@
     document.addEventListener(
       "DOMContentLoaded",
       () => document.body && document.body.classList.add("xp-loading"),
-      { once: true }
+      { once: true },
     );
   }
 
@@ -90,7 +90,7 @@
       windowLoaded = true;
       checkReady();
     },
-    { once: true }
+    { once: true },
   );
 
   // Wait for user click to start
@@ -169,7 +169,7 @@
   const xpDesktop = document.getElementById("xp-desktop");
   const paintIcon = document.getElementById("paint-icon");
   const paintWindowContainer = document.getElementById(
-    "paint-window-container"
+    "paint-window-container",
   );
   const paintCloseBtn = document.getElementById("paint-close-btn");
   const xpClock = document.getElementById("xp-clock");
@@ -183,7 +183,7 @@
   if (!pcContainer || !pcPowerBtn) return;
 
   const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
+    "(prefers-reduced-motion: reduce)",
   ).matches;
 
   const ZOOM_PADDING_PCT = 0.04; // tweak: smaller -> fills more of viewport
@@ -242,7 +242,7 @@
     }
 
     const padding = Math.round(
-      Math.min(window.innerWidth, window.innerHeight) * ZOOM_PADDING_PCT
+      Math.min(window.innerWidth, window.innerHeight) * ZOOM_PADDING_PCT,
     );
     const targetW = Math.max(50, window.innerWidth - padding * 2);
     const targetH = Math.max(50, window.innerHeight - padding * 2);
@@ -250,7 +250,7 @@
     const scale = clamp(
       Math.min(targetW / maskRect.width, targetH / maskRect.height),
       1,
-      ZOOM_MAX_SCALE
+      ZOOM_MAX_SCALE,
     );
 
     const viewportCenterX = window.innerWidth / 2;
@@ -276,7 +276,7 @@
     if (wasZoomed) pcContainer.classList.add("pc-zoomed");
     if (instant) {
       requestAnimationFrame(() =>
-        pcContainer.classList.remove("pc-zoomed--no-transition")
+        pcContainer.classList.remove("pc-zoomed--no-transition"),
       );
     }
 
@@ -376,7 +376,7 @@
     [noSignalScreen, biosBootScreen, xpBootScreen, xpDesktop].forEach(
       (screen) => {
         if (screen) screen.classList.remove("active");
-      }
+      },
     );
     const target = document.getElementById(screenId);
     if (target) target.classList.add("active");
@@ -489,7 +489,7 @@
         applyScrollZoom();
       });
     },
-    { passive: true }
+    { passive: true },
   );
 
   // Keep the zoom stable across resizes / different screen sizes.
@@ -508,7 +508,7 @@
         };
       }
     },
-    { passive: true }
+    { passive: true },
   );
 })();
 
@@ -524,7 +524,7 @@
   if (!ctx) return;
 
   const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
+    "(prefers-reduced-motion: reduce)",
   ).matches;
 
   let cssW = 1;
@@ -694,7 +694,7 @@
       if (on) start();
       else stop();
     },
-    { threshold: 0.02 }
+    { threshold: 0.02 },
   );
   io.observe(section);
 
@@ -703,7 +703,7 @@
     () => {
       resize();
     },
-    { passive: true }
+    { passive: true },
   );
 })();
 
@@ -726,7 +726,7 @@
     75,
     window.innerWidth / window.innerHeight,
     0.1,
-    300
+    300,
   );
   camera.position.set(0, 2, 7.5);
   camera.lookAt(0, 0.2, -18);
@@ -743,7 +743,7 @@
     camera.fov,
     1,
     camera.near,
-    camera.far
+    camera.far,
   );
   modelCamera.position.copy(camera.position);
   modelCamera.quaternion.copy(camera.quaternion);
@@ -755,7 +755,7 @@
     camera.fov,
     1,
     camera.near,
-    camera.far
+    camera.far,
   );
   pillarsCamera.position.copy(camera.position);
   pillarsCamera.quaternion.copy(camera.quaternion);
@@ -842,7 +842,7 @@
   (function loadMarblePillars() {
     if (!THREE.GLTFLoader) {
       console.warn(
-        "GLTFLoader not found. Ensure the GLTFLoader script is loaded."
+        "GLTFLoader not found. Ensure the GLTFLoader script is loaded.",
       );
       // Don't block the boot overlay if the loader script is missing.
       if (window.markModelLoaded) window.markModelLoaded("model1");
@@ -904,7 +904,7 @@
         if (window.markModelLoaded) {
           window.markModelLoaded("model1");
         }
-      }
+      },
     );
   })();
 
@@ -918,7 +918,7 @@
     tileWidth,
     tileDepth,
     segmentsW,
-    segmentsD
+    segmentsD,
   );
   const pos = geometry.attributes.position;
 
@@ -976,7 +976,7 @@
   (function loadHeroModel() {
     if (!THREE.GLTFLoader) {
       console.warn(
-        "GLTFLoader not found. Ensure the GLTFLoader script is loaded."
+        "GLTFLoader not found. Ensure the GLTFLoader script is loaded.",
       );
       // Don't block the boot overlay if the loader script is missing.
       if (window.markModelLoaded) window.markModelLoaded("model2");
@@ -1035,7 +1035,7 @@
                 // fade scanlines out shortly after full reveal
                 setTimeout(
                   () => modelRevealEl.classList.remove("is-revealing"),
-                  350
+                  350,
                 );
               }
             };
@@ -1075,7 +1075,7 @@
         if (window.markModelLoaded) {
           window.markModelLoaded("model2");
         }
-      }
+      },
     );
   })();
 
@@ -1124,7 +1124,7 @@
       modelCamera.lookAt(
         heroOrbitCenter.x,
         heroOrbitCenter.y,
-        heroOrbitCenter.z
+        heroOrbitCenter.z,
       );
 
       // Subtle idle tilt on the model itself for depth.
@@ -1202,7 +1202,7 @@
         heroInView = entries.some((e) => e.isIntersecting);
         heroUpdateRunning();
       },
-      { threshold: 0.05 }
+      { threshold: 0.05 },
     );
     heroObserver.observe(heroSection);
   }
@@ -1873,7 +1873,10 @@
     // Resizing a sticker
     if (resizingSticker != null) {
       const deltaY = p.y - resizeStartY;
-      const newSize = Math.max(STICKER_MIN_SIZE, Math.min(STICKER_MAX_SIZE, resizeStartSize + deltaY * 2));
+      const newSize = Math.max(
+        STICKER_MIN_SIZE,
+        Math.min(STICKER_MAX_SIZE, resizeStartSize + deltaY * 2),
+      );
       resizingSticker.size = newSize;
       clampStickerToCanvas(resizingSticker);
       renderCanvas({ keepArt: true });
@@ -1957,7 +1960,7 @@
   const generateBtn = document.getElementById("generate-cassette-btn");
   const cassetteGenCanvas = document.getElementById("cassette-gen-canvas");
   const paintCanvasContainer = document.querySelector(
-    ".paint-canvas-container"
+    ".paint-canvas-container",
   );
   const paintWindow = document.querySelector(".paint-window");
   const paintStage = document.querySelector(".paint-stage");
@@ -2209,7 +2212,7 @@
 
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(3.0, 1.95, 0.34),
-      bodyMat
+      bodyMat,
     );
     body.position.set(0, 0.02, 0);
     group.add(body);
@@ -2222,14 +2225,14 @@
         roughness: 0.35,
         metalness: 0.55,
         emissive: 0x000000,
-      })
+      }),
     );
     edgePlate.position.set(0, 0.02, 0.13);
     group.add(edgePlate);
 
     const front = new THREE.Mesh(
       new THREE.BoxGeometry(2.92, 1.87, 0.02),
-      faceMat
+      faceMat,
     );
     front.position.set(0, 0.02, 0.18);
     group.add(front);
@@ -2239,7 +2242,7 @@
     const label = new THREE.Mesh(
       // Match the Paint canvas aspect ratio (248:100 ~= 2.48)
       new THREE.PlaneGeometry(2.55, 1.03),
-      cassetteLabelMat
+      cassetteLabelMat,
     );
     label.position.set(0, 0.56, 0.191);
     group.add(label);
@@ -2247,7 +2250,7 @@
     // Window cutout
     const windowPanel = new THREE.Mesh(
       new THREE.PlaneGeometry(2.0, 0.62),
-      windowMat
+      windowMat,
     );
     windowPanel.position.set(0, -0.35, 0.191);
     group.add(windowPanel);
@@ -2275,7 +2278,7 @@
         color: 0x6b3d1a,
         roughness: 0.6,
         metalness: 0.0,
-      })
+      }),
     );
     tape.position.set(0, -0.35, 0.17);
     group.add(tape);
@@ -2493,7 +2496,7 @@
     state.inFlight = true;
 
     const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
+      "(prefers-reduced-motion: reduce)",
     ).matches;
 
     const tuning = VEKTROID.cassetteTuning;
@@ -2625,7 +2628,7 @@
       // Scroll up/down nudges a pitch-like rotation.
       floatRotVel.x += dy * k;
     },
-    { passive: true }
+    { passive: true },
   );
 
   function getFloatingCassetteCanvas() {
@@ -2694,12 +2697,12 @@
       floatCassette.rotation.set(
         tuning?.rotation?.x ?? Math.PI / 2,
         tuning?.rotation?.y ?? Math.PI,
-        tuning?.rotation?.z ?? Math.PI / 2
+        tuning?.rotation?.z ?? Math.PI / 2,
       );
       floatCassette.position.set(
         tuning?.meshPosition?.x ?? 0,
         tuning?.meshPosition?.y ?? 0,
-        tuning?.meshPosition?.z ?? 0
+        tuning?.meshPosition?.z ?? 0,
       );
       floatScene.add(floatCassette);
 
@@ -2899,7 +2902,7 @@
     if (slideAnim) {
       const p = Math.min(
         1,
-        Math.max(0, (now - slideAnim.t0) / slideAnim.durationMs)
+        Math.max(0, (now - slideAnim.t0) / slideAnim.durationMs),
       );
       const e = easeOutCubic(p);
 
@@ -3016,6 +3019,9 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(width, height);
   renderer.setClearColor(0x000000, 0);
+  // Match encoding used by the hero/floating cassette renderers.
+  // Without this, colors can look darker/muddier and the cassette handoff feels like a lighting snap.
+  renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = true;
   container.appendChild(renderer.domElement);
 
@@ -3089,7 +3095,7 @@
   // Dark inner void
   const voidBox = new THREE.Mesh(
     new THREE.BoxGeometry(3.2, 2.8, 0.1),
-    innerDarkMat
+    innerDarkMat,
   );
   voidBox.position.set(0, 0.25, -0.54);
   chassisGroup.add(voidBox);
@@ -3154,7 +3160,7 @@
       color: 0x1a1a1a,
       roughness: 0.25,
       metalness: 0.15,
-    })
+    }),
   );
 
   // Label texture (updated from the generated Paint cassette when available)
@@ -3203,7 +3209,7 @@
     labelCtx.fillText(
       text || "FLORAL SHOPPE",
       labelCanvas.width / 2,
-      labelCanvas.height / 2
+      labelCanvas.height / 2,
     );
   }
 
@@ -3223,7 +3229,7 @@
       0,
       0,
       labelCanvas.width,
-      labelCanvas.height
+      labelCanvas.height,
     );
 
     // subtle border
@@ -3240,7 +3246,7 @@
   const tapeLabel = new THREE.Mesh(
     // Keep the cover image aspect closer to the Paint canvas.
     new THREE.BoxGeometry(2.8, 1.13, 0.32),
-    new THREE.MeshBasicMaterial({ map: labelTexture })
+    new THREE.MeshBasicMaterial({ map: labelTexture }),
   );
   tapeLabel.position.y = 0.65;
   tapeGroup.add(tapeBody);
@@ -3262,7 +3268,7 @@
 
   const tooth = new THREE.Mesh(
     new THREE.BoxGeometry(0.1, 0.4, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0x000 })
+    new THREE.MeshBasicMaterial({ color: 0x000 }),
   );
   leftReel.add(tooth);
   rightReel.add(tooth.clone());
@@ -3306,6 +3312,45 @@
 
   function setActiveCassetteGroup(group) {
     activeCassetteGroup = group || tapeGroup;
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function animatePlayerToFront(durationMs = 650) {
+    const startX = playerGroup.rotation.x;
+    const startY = playerGroup.rotation.y;
+    const startZ = playerGroup.rotation.z;
+
+    // Face the camera (camera is at ~(+x,+z)), so yaw 45deg toward it.
+    const targetX = -0.12;
+    const targetY = Math.PI / 4;
+    const targetZ = 0;
+
+    const t0 = performance.now();
+    rotVel.x = 0;
+    rotVel.y = 0;
+
+    function step(now) {
+      const p = Math.min(1, Math.max(0, (now - t0) / durationMs));
+      const e = easeInOutCubic(p);
+      playerGroup.rotation.x = startX + (targetX - startX) * e;
+      playerGroup.rotation.y = startY + (targetY - startY) * e;
+      playerGroup.rotation.z = startZ + (targetZ - startZ) * e;
+      if (p < 1) requestAnimationFrame(step);
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  function disableShadowsForGroup(group) {
+    if (!group || typeof group.traverse !== "function") return;
+    group.traverse((obj) => {
+      if (!obj || !obj.isMesh) return;
+      obj.castShadow = false;
+      obj.receiveShadow = false;
+    });
   }
 
   function applyPlayerLabelToCassette(group) {
@@ -3457,13 +3502,13 @@
       isPlaying = true;
       setStatus(
         `再生中 PLAYING >>\n${tapePlaylist[currentTrackIndex].title}`,
-        "#05ffa1"
+        "#05ffa1",
       );
       startVisualizer();
     } catch (e) {
       console.warn(
         "Audio play failed (autoplay restriction or missing file):",
-        e
+        e,
       );
       isPlaying = false;
       setStatus("PLAY FAILED 再生失敗", "#ff71ce");
@@ -3477,7 +3522,7 @@
     isPlaying = false;
     setStatus(
       `停止 STOPPED\n${tapePlaylist[currentTrackIndex]?.title ?? ""}`,
-      "#ff71ce"
+      "#ff71ce",
     );
     stopVisualizer();
   }
@@ -3487,7 +3532,7 @@
     isPlaying = false;
     setStatus(
       `一時停止 PAUSED\n${tapePlaylist[currentTrackIndex]?.title ?? ""}`,
-      "#b967ff"
+      "#b967ff",
     );
     stopVisualizer();
   }
@@ -3772,7 +3817,7 @@
       playerGroup.rotation.y += rotVel.y;
       playerGroup.rotation.x = Math.max(
         -0.9,
-        Math.min(0.6, playerGroup.rotation.x)
+        Math.min(0.6, playerGroup.rotation.x),
       );
       rotVel.x *= damping;
       rotVel.y *= damping;
@@ -3827,7 +3872,7 @@
         playerInView = entries.some((e) => e.isIntersecting);
         playerUpdateRunning();
       },
-      { threshold: 0.05 }
+      { threshold: 0.05 },
     );
     playerObserver.observe(playerSection);
   }
@@ -3866,7 +3911,7 @@
     // Clamp X rotation a bit so it doesn't flip
     playerGroup.rotation.x = Math.max(
       -0.9,
-      Math.min(0.6, playerGroup.rotation.x)
+      Math.min(0.6, playerGroup.rotation.x),
     );
 
     rotVel.x = vx;
@@ -3983,14 +4028,24 @@
       playerGroup.add(mesh);
       mesh.visible = true;
 
-      // Normalize transform for the player universe.
-      mesh.rotation.set(0, 0, 0);
+      // Keep the current orientation as the starting point, then rotate smoothly
+      // so it doesn't "snap" when moving between renderers.
+      const startRot = mesh.rotation.clone();
+      const targetRot = new THREE.Euler(0, 0, 0);
       mesh.position.set(6, 0.25, 0);
+
+      // Prevent the cassette from darkening due to unexpected shadowing.
+      disableShadowsForGroup(mesh);
 
       applyPlayerLabelToCassette(mesh);
       setActiveCassetteGroup(mesh);
 
-      insertTapeAnimation({ ...opts, targetGroup: mesh });
+      insertTapeAnimation({
+        ...opts,
+        targetGroup: mesh,
+        rotateFrom: startRot,
+        rotateTo: targetRot,
+      });
       return;
     }
 
@@ -4000,6 +4055,11 @@
 
   function insertTapeAnimation(opts = {}) {
     const targetGroup = opts.targetGroup || tapeGroup;
+
+    // Smoothly orient the whole player and cassette to look better on insert.
+    animatePlayerToFront(
+      typeof opts.playerRotateMs === "number" ? opts.playerRotateMs : 650,
+    );
 
     // Only show the tape once we start inserting.
     targetGroup.visible = true;
@@ -4011,12 +4071,20 @@
     const t0 = performance.now();
     const dur = typeof opts.durationMs === "number" ? opts.durationMs : 650;
 
+    const rotateFrom = opts.rotateFrom || targetGroup.rotation.clone();
+    const rotateTo = opts.rotateTo || targetGroup.rotation.clone();
+
     targetGroup.position.x = startX;
 
     function step(now) {
       const p = Math.min(1, Math.max(0, (now - t0) / dur));
       const e = 1 - Math.pow(1 - p, 3);
       targetGroup.position.x = startX + (endX - startX) * e;
+
+      // Rotate smoothly during the travel so the front reads nicely.
+      targetGroup.rotation.x = rotateFrom.x + (rotateTo.x - rotateFrom.x) * e;
+      targetGroup.rotation.y = rotateFrom.y + (rotateTo.y - rotateFrom.y) * e;
+      targetGroup.rotation.z = rotateFrom.z + (rotateTo.z - rotateFrom.z) * e;
       if (p < 1) {
         requestAnimationFrame(step);
         return;
@@ -4049,7 +4117,7 @@
         resizeVisualizerCanvas();
       }, 150);
     },
-    { passive: true }
+    { passive: true },
   );
 })();
 
@@ -4105,7 +4173,7 @@
         scrollTicking = true;
       }
     },
-    { passive: true }
+    { passive: true },
   );
 
   // Initial check
